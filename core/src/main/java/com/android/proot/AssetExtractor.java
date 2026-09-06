@@ -38,10 +38,17 @@ public class AssetExtractor {
             int n;
             while ((n = is.read(buf)) != -1) fos.write(buf, 0, n);
         }
-        Process tarProc = new ProcessBuilder("tar", "xzf", tarFile.getAbsolutePath())
-                .directory(destDir)
-                .redirectErrorStream(true)
-                .start();
+        ProcessBuilder pb;
+        if (new File("/system/bin/toybox").exists()) {
+            pb = new ProcessBuilder("/system/bin/toybox", "tar", "xzf", tarFile.getAbsolutePath());
+        } else if (new File("/system/bin/tar").exists()) {
+            pb = new ProcessBuilder("/system/bin/tar", "xzf", tarFile.getAbsolutePath());
+        } else {
+            pb = new ProcessBuilder("tar", "xzf", tarFile.getAbsolutePath());
+        }
+        pb.directory(destDir);
+        pb.redirectErrorStream(true);
+        Process tarProc = pb.start();
         try {
             tarProc.waitFor();
         } catch (InterruptedException e) {

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -69,9 +70,16 @@ public class PRootEngine {
             return false;
         }
 
-        if (!setupGlibcLibs()) {
-            Log.e(TAG, "Failed to setup glibc runtime libraries.");
-            return false;
+        boolean hasAlpine = setupAlpineRootfs();
+        if (!hasAlpine) {
+            Log.w(TAG, "Alpine rootfs asset not present, falling back to glibc setup...");
+            if (!setupGlibcLibs()) {
+                Log.e(TAG, "Failed to setup runtime libraries.");
+                return false;
+            }
+        } else {
+            // Optional auxiliary glibc runtime
+            setupGlibcLibs();
         }
 
         setupRootfs();
@@ -98,8 +106,16 @@ public class PRootEngine {
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.redirectErrorStream(config.isRedirectErrorStream());
 
-        // Configure environment variables
-        Map<String, String> env = pb.environment();
+        pb.environment().putAll(buildEnvironment(config));
+        Process process = pb.start();
+        return new PRootProcess(process);
+    }
+
+    /**
+     * Builds the complete environment variable map for a container session.
+     */
+    public Map<String, String> buildEnvironment(PRootConfig config) {
+        Map<String, String> env = new HashMap<>();
         if (nativeLibDir != null) {
             env.put("LD_LIBRARY_PATH", nativeLibDir);
         }
@@ -108,23 +124,23 @@ public class PRootEngine {
         }
         env.put("PROOT_TMP_DIR", context.getCacheDir().getAbsolutePath());
         env.put("TMPDIR", "/tmp");
-        env.put("HOME", "/app");
-        env.put("PATH", "/usr/local/bin:/usr/bin:/bin:/system/bin:/system/xbin");
+        env.put("HOME", "/root");
+        env.put("USER", "root");
+        env.put("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/system/bin");
         env.put("GODEBUG", "netdns=go");
         env.put("SSL_CERT_FILE", "/etc/ssl/certs/ca-certificates.crt");
         env.put("SSL_CERT_DIR", "/etc/ssl/certs");
-
-        // Inject custom environment variables from config
+        env.put("TERM", "xterm-256color");
+        env.put("LANG", "C.UTF-8");
+        env.put("LC_ALL", "C.UTF-8");
         env.putAll(config.getEnvVars());
-
-        Process process = pb.start();
-        return new PRootProcess(process);
+        return env;
     }
 
     /**
      * Builds the complete PRoot argument array.
      */
-    private List<String> buildCommandLine(PRootConfig config) {
+    public List<String> buildCommandLine(PRootConfig config) {
         List<String> cmd = new ArrayList<>();
         cmd.add(prootPath);
         cmd.add("-r");
@@ -150,20 +166,22 @@ public class PRootEngine {
             cmd.add("-b"); cmd.add("/system");
         }
 
+        boolean isAlpine = new File(rootfsDir, "bin/busybox").exists();
+
         // Glibc dynamic linker
-        if (linkerPath != null) {
+        if (linkerPath != null && !isAlpine) {
             cmd.add("-b"); cmd.add(linkerPath + ":/lib/ld-linux-aarch64.so.1");
         }
 
-        // Glibc shared libraries
+        // Glibc shared libraries (auxiliary)
         File lib64Dir = new File(glibcDir, "usr/lib64");
-        if (lib64Dir.exists()) {
+        if (lib64Dir.exists() && !isAlpine) {
             cmd.add("-b"); cmd.add(lib64Dir.getAbsolutePath() + ":/usr/lib64");
             cmd.add("-b"); cmd.add(lib64Dir.getAbsolutePath() + ":/lib64");
         }
 
         File binDir = new File(glibcDir, "usr/bin");
-        if (binDir.isDirectory()) {
+        if (binDir.isDirectory() && !isAlpine) {
             cmd.add("-b"); cmd.add(binDir.getAbsolutePath() + ":/usr/bin");
         }
 
@@ -171,28 +189,25 @@ public class PRootEngine {
         cmd.add("-b"); cmd.add(filesDir.getAbsolutePath() + ":/app");
         cmd.add("-b"); cmd.add(tmpDir.getAbsolutePath() + ":/tmp");
 
-        // Network and CA certificate bindings
-        File etcDir = new File(rootfsDir, "etc");
-        File resolvConf = new File(etcDir, "resolv.conf");
-        if (resolvConf.exists()) {
-            cmd.add("-b"); cmd.add(resolvConf.getAbsolutePath() + ":/etc/resolv.conf");
-        }
-        File nsswitchConf = new File(etcDir, "nsswitch.conf");
-        if (nsswitchConf.exists()) {
-            cmd.add("-b"); cmd.add(nsswitchConf.getAbsolutePath() + ":/etc/nsswitch.conf");
-        }
-        File hostsFile = new File(etcDir, "hosts");
-        if (hostsFile.exists()) {
-            cmd.add("-b"); cmd.add(hostsFile.getAbsolutePath() + ":/etc/hosts");
-        }
-        File mergedCert = new File(etcDir, "ssl/certs/ca-certificates.crt");
-        if (mergedCert.exists()) {
-            cmd.add("-b"); cmd.add(mergedCert.getAbsolutePath() + ":/etc/ssl/certs/ca-certificates.crt");
+        // Network and CA certificate bindings (fallback)
+        if (!isAlpine) {
+            File etcDir = new File(rootfsDir, "etc");
+            File resolvConf = new File(etcDir, "resolv.conf");
+            if (resolvConf.exists()) {
+                cmd.add("-b"); cmd.add(resolvConf.getAbsolutePath() + ":/etc/resolv.conf");
+            }
+            File mergedCert = new File(etcDir, "ssl/certs/ca-certificates.crt");
+            if (mergedCert.exists()) {
+                cmd.add("-b"); cmd.add(mergedCert.getAbsolutePath() + ":/etc/ssl/certs/ca-certificates.crt");
+            }
         }
 
-        // Embedded shell if available
-        if (bashPath != null) {
+        // Embedded shell fallback / bash mapping
+        File guestSh = new File(rootfsDir, "bin/sh");
+        if (!guestSh.exists() && bashPath != null) {
             cmd.add("-b"); cmd.add(bashPath + ":/bin/sh");
+        } else if (bashPath != null) {
+            cmd.add("-b"); cmd.add(bashPath + ":/bin/bash");
         }
 
         // User custom bind mounts
@@ -263,6 +278,52 @@ public class PRootEngine {
             }
         }
         return null;
+    }
+
+    /**
+     * Extracts pre-configured Alpine Linux rootfs (containing apk, ca-certificates, and aichat agent).
+     */
+    private boolean setupAlpineRootfs() {
+        File busybox = new File(rootfsDir, "bin/busybox");
+        File marker = new File(rootfsDir, ".alpine_done");
+
+        if (busybox.exists() && marker.exists()) {
+            return true;
+        }
+
+        boolean hasAsset = false;
+        try (InputStream is = context.getAssets().open("alpine-rootfs-arm64.tar.bin")) {
+            hasAsset = (is != null);
+        } catch (Exception ignored) {}
+
+        if (!hasAsset) {
+            return busybox.exists();
+        }
+
+        try {
+            Log.i(TAG, "Extracting pre-configured Alpine rootfs to: " + rootfsDir.getAbsolutePath());
+            rootfsDir.mkdirs();
+            AssetExtractor.extractAssetTar(context, "alpine-rootfs-arm64.tar.bin", rootfsDir);
+
+            // Ensure critical permissions
+            File bb = new File(rootfsDir, "bin/busybox");
+            if (bb.exists()) bb.setExecutable(true, false);
+            File aichat = new File(rootfsDir, "usr/local/bin/aichat");
+            if (aichat.exists()) aichat.setExecutable(true, false);
+            File apkBin = new File(rootfsDir, "sbin/apk");
+            if (apkBin.exists()) apkBin.setExecutable(true, false);
+
+            boolean ok = bb.exists();
+            if (ok) {
+                try (FileWriter fw = new FileWriter(marker)) {
+                    fw.write("ready");
+                }
+            }
+            return ok;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to extract Alpine rootfs", e);
+            return false;
+        }
     }
 
     /**

@@ -60,4 +60,6 @@ android {
 
 dependencies {
     implementation project(':core')
+    implementation fileTree(dir: 'libs', include: ['*.aar', '*.jar'])
+    implementation 'androidx.annotation:annotation:1.7.0'
 }

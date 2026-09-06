@@ -7,4 +7,5 @@
 */build
 *.apk
 *.aar
+!app/libs/*.aar
 .cxx

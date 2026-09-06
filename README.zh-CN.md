@@ -21,20 +21,27 @@
 <br/>
 
 ### 一、项目简介
-**Android-PRoot-Engine** 是一个可直接嵌入 Android 应用的模块化类库（AAR）。它允许在**完全无需 Root 权限**的普通 Android 手机沙箱环境中，平滑运行任意标准 GNU Linux ARM64 (aarch64) ELF 格式的可执行程序。
+**Android-PRoot-Engine** 是一个面向 Android (ARM64) 平台的**口袋级免 Root Linux 虚拟化与 AI 极客工作站 SDK**。它不仅是一个可直接嵌入 Android 应用的模块化类库（AAR），更集成了一套完整的用户态容器生态：
+1. **Termux TerminalView + JNI PTY 交互终端**：提供完整的 ANSI/VT100 终端模拟、手势双指缩放、剪贴板交互以及专用虚拟辅助键盘栏（`ESC`, `TAB`, `CTRL`, `ALT`, `^C`, `^D`, 方向键等）。
+2. **预调优 Alpine Linux 3.20 (aarch64) 容器**：开箱即用集成清华镜像源、官方社区源、Mozilla CA 根证书、UTF-8 中文环境及 `apk` 包管理体系。
+3. **预置 `sigoden/aichat` 静态单二进制 AI Agent**：内建 Rust aarch64 musl 原生 AI 命令行助手，提供便捷的 UI 密钥与模型管理弹窗，开箱即用支持 DeepSeek (`deepseek-chat` / `deepseek-reasoner`)、OpenAI 与任意兼容接口。
+4. **全自闭环仅 16MB**：打包了完备的 Linux 运行时、伪终端核心与 AI Agent，整包体积极致控制在 16MB 以内。
 
 它从根本上解决了 Android 系统运行原生 Linux 程序的几大技术壁垒：
-1. **C 运行库断层（Bionic vs Glibc）**：Android 采用自研的 Bionic C 库，无法直接加载依赖 GNU Glibc 的 Linux 程序。本项目在沙箱内动态映射并接管了标准的 64 位 Glibc 动态链接器（`/lib/ld-linux-aarch64.so.1`）与基础依赖库。
-2. **Android 10+ W^X 内存安全绞杀**：利用 Android 原生动态库加载规范与 ptrace 路径模拟技术，合规绕过私有目录下可执行文件的执行限制，不触发任何 SELinux 安全告警。
-3. **网络与 CA 证书缺失**：自动提取并熔接 Android 系统内部的 CA 根证书，生成标准 Linux PEM 证书链，并注入定制的 DNS 解析配置，确保外联 HTTPS 请求 100% 顺畅。
+1. **C 运行库断层（Bionic vs Musl/Glibc）**：Android 采用自研的 Bionic C 库，无法直接加载依赖 GNU Glibc 或 Musl 的标准 Linux 程序。本项目在沙箱内动态映射接管 Alpine musl 体系并保留了标准 64 位 Glibc 动态链接器（`/lib/ld-linux-aarch64.so.1`）。
+2. **Android 10+ W^X 内存安全限制**：利用 Android 原生动态库加载规范与 ptrace 路径模拟技术，合规绕过私有目录下可执行文件的执行限制，不触发任何 SELinux 安全告警。
+3. **网络与 CA 证书缺失**：内置 Mozilla 全量 `ca-certificates.crt` 根证书，并自动注入定制 DNS 解析配置，确保外联 HTTPS 请求 100% 顺畅。
 
 ---
 
 ### 二、核心特性
 - 🚀 **免 Root 虚拟化**：纯用户态运行，基于 Linux 原生 `PTRACE_SYSCALL` 系统调用劫持与虚构。
-- 📦 **开箱即用自闭环**：内置 4.8MB 经裁剪的极简 Glibc ARM64 运行时资产包，初次启动秒级释放，完全无需联网。
-- 🔒 **Android 10+ 兼容**：通过原生库障眼法与执行流调度，全面兼容 Android 7.0 至 Android 15+。
-- 🌐 **HTTPS & DNS 全打通**：自动热熔接系统 `/system/etc/security/cacerts` 为标准 `/etc/ssl/certs/ca-certificates.crt`，并支持内建纯 Go DNS。
+- 🖥️ **Termux 级交互终端**：基于 `com.termux.view.TerminalView` 与 JNI `libtermux.so`，支持 `top`、`vi`、彩色 ANSI、软键盘按键与虚拟控制键栏。
+- 🏔️ **预调优 Alpine 3.20 系统**：预置国内清华源 + 官方主源，开箱可直接使用 `apk add` 安装 python、nodejs、git、curl 等各类工具链。
+- 🤖 **内置 aichat AI Agent**：基于 Rust 高性能静态二进制，零 Python 解释器或外部庞大依赖，一键唤醒终端 AI 智能体对话与代码生成。
+- 🔑 **直观的 AI 密钥管理**：提供可视化弹窗配置 DeepSeek / OpenAI API 密钥，实时同步沙箱内 `~/.config/aichat/config.yaml` 配置文件与环境变量。
+- 📦 **开箱即用自闭环**：离线自包含 Alpine rootfs 与 Glibc 兼容运行时，初次启动秒级释放，整包仅 16MB。
+- 🔒 **Android 10+ 兼容**：通过原生库机制，全面兼容 Android 7.0 至 Android 15+。
 - 🎛️ **极简 Java / Kotlin API**：封装了进程生命周期管理、真实 PID 获取、输出日志流监听与进程树强力查杀。
 
 ---

@@ -94,11 +94,18 @@
                 android:text="Zero-Root" />
 
             <TextView
-                android:id="@+id/badge_glibc"
+                android:id="@+id/badge_distro"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
-                android:text="Glibc 2.38" />
+                android:text="Alpine 3.20" />
+
+            <TextView
+                android:id="@+id/badge_agent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="aichat AI" />
 
             <TextView
                 android:id="@+id/badge_saf"
@@ -142,14 +149,28 @@
         android:layout_marginTop="8dp"
         android:padding="12dp">
 
-        <TextView
-            android:id="@+id/tv_section_control"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="CONTROL PANEL"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="#8B949E" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tv_section_control"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="CONTROL PANEL"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#8B949E" />
+
+            <TextView
+                android:id="@+id/btn_config_key"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔑 AI Key" />
+        </LinearLayout>
 
         <!-- Preset Action Buttons -->
         <LinearLayout
@@ -163,30 +184,38 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Init Engine" />
+                android:text="Init" />
 
             <TextView
                 android:id="@+id/btn_run_uname"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="6dp"
-                android:text="Run uname" />
+                android:layout_marginStart="4dp"
+                android:text="uname" />
 
             <TextView
                 android:id="@+id/btn_run_script"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="6dp"
-                android:text="Run Script" />
+                android:layout_marginStart="4dp"
+                android:text="Shell" />
+
+            <TextView
+                android:id="@+id/btn_agent"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1.2"
+                android:layout_marginStart="4dp"
+                android:text="🤖 Agent" />
 
             <TextView
                 android:id="@+id/btn_stop"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="6dp"
+                android:layout_weight="0.9"
+                android:layout_marginStart="4dp"
                 android:text="Stop" />
         </LinearLayout>
 
@@ -252,7 +281,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="0 lines" />
+                android:text="PTY: Ready" />
 
             <View
                 android:layout_width="0dp"
@@ -260,9 +289,23 @@
                 android:layout_weight="1" />
 
             <TextView
+                android:id="@+id/btn_font_minus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="A-" />
+
+            <TextView
+                android:id="@+id/btn_font_plus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="A+" />
+
+            <TextView
                 android:id="@+id/btn_copy"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
                 android:text="Copy" />
 
             <TextView
@@ -273,26 +316,51 @@
                 android:text="Clear" />
         </LinearLayout>
 
-        <!-- Terminal Output Viewport -->
-        <ScrollView
-            android:id="@+id/scroll_log"
+        <!-- Interactive Terminal Viewport -->
+        <FrameLayout
+            android:id="@+id/frame_terminal"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
             android:layout_marginTop="8dp"
-            android:padding="8dp">
+            android:padding="4dp">
 
-            <TextView
-                android:id="@+id/tv_log"
+            <com.termux.view.TerminalView
+                android:id="@+id/terminal_view"
                 android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
+        </FrameLayout>
+
+        <!-- Accessory Keybar (ESC / TAB / CTRL / ALT / Arrows) -->
+        <HorizontalScrollView
+            android:id="@+id/scroll_keybar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/layout_keybar"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:typeface="monospace"
-                android:textSize="11.5sp"
-                android:textColor="#7EE787"
-                android:textIsSelectable="true"
-                android:lineSpacingExtra="2dp"
-                android:text="PRoot Engine Shell Ready.\n" />
-        </ScrollView>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView android:id="@+id/key_esc" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ESC" />
+                <TextView android:id="@+id/key_tab" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="TAB" />
+                <TextView android:id="@+id/key_ctrl" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="CTRL" />
+                <TextView android:id="@+id/key_alt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="ALT" />
+                <TextView android:id="@+id/key_sigint" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="^C" />
+                <TextView android:id="@+id/key_eof" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="^D" />
+                <TextView android:id="@+id/key_up" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="▲" />
+                <TextView android:id="@+id/key_down" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="▼" />
+                <TextView android:id="@+id/key_left" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="◀" />
+                <TextView android:id="@+id/key_right" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="▶" />
+                <TextView android:id="@+id/key_paste" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:text="PASTE" />
+            </LinearLayout>
+        </HorizontalScrollView>
     </LinearLayout>
 
 </LinearLayout>
