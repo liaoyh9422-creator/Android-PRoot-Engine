@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -42,7 +43,7 @@ public class PRootEngine {
         this.filesDir = baseDir;
         this.rootfsDir = new File(baseDir, "proot-rootfs");
         this.glibcDir = new File(baseDir, "glibc");
-        this.tmpDir = new File(context.getCacheDir(), "tmp");
+        this.tmpDir = new File(baseDir, "tmp");
         this.tmpDir.mkdirs();
     }
 
@@ -122,7 +123,7 @@ public class PRootEngine {
         if (loaderPath != null) {
             env.put("PROOT_LOADER", loaderPath);
         }
-        env.put("PROOT_TMP_DIR", context.getCacheDir().getAbsolutePath());
+        env.put("PROOT_TMP_DIR", tmpDir.getAbsolutePath());
         env.put("TMPDIR", "/tmp");
         env.put("HOME", "/root");
         env.put("USER", "root");
@@ -202,12 +203,14 @@ public class PRootEngine {
             }
         }
 
-        // Embedded shell fallback / bash mapping
-        File guestSh = new File(rootfsDir, "bin/sh");
-        if (!guestSh.exists() && bashPath != null) {
-            cmd.add("-b"); cmd.add(bashPath + ":/bin/sh");
-        } else if (bashPath != null) {
-            cmd.add("-b"); cmd.add(bashPath + ":/bin/bash");
+        // Embedded shell fallback / bash mapping (only for glibc fallback, NEVER for Alpine)
+        if (!isAlpine) {
+            File guestSh = new File(rootfsDir, "bin/sh");
+            if (!guestSh.exists() && bashPath != null) {
+                cmd.add("-b"); cmd.add(bashPath + ":/bin/sh");
+            } else if (bashPath != null) {
+                cmd.add("-b"); cmd.add(bashPath + ":/bin/bash");
+            }
         }
 
         // User custom bind mounts
@@ -285,7 +288,7 @@ public class PRootEngine {
      */
     private boolean setupAlpineRootfs() {
         File busybox = new File(rootfsDir, "bin/busybox");
-        File marker = new File(rootfsDir, ".alpine_done");
+        File marker = new File(rootfsDir, ".alpine_done_v3");
 
         if (busybox.exists() && marker.exists()) {
             return true;
@@ -312,6 +315,26 @@ public class PRootEngine {
             if (aichat.exists()) aichat.setExecutable(true, false);
             File apkBin = new File(rootfsDir, "sbin/apk");
             if (apkBin.exists()) apkBin.setExecutable(true, false);
+
+            // Ensure bin/sh exists and uses a relative symlink to busybox
+            // Absolute symlinks like '/bin/busybox' break when checked on Android host
+            File sh = new File(rootfsDir, "bin/sh");
+            if (bb.exists()) {
+                sh.delete();
+                try {
+                    android.system.Os.symlink("busybox", sh.getAbsolutePath());
+                } catch (Exception e) {
+                    // Fallback to copy if symlink creation is not permitted
+                    try (InputStream in = new java.io.FileInputStream(bb);
+                         OutputStream out = new FileOutputStream(sh)) {
+                        byte[] buf = new byte[8192];
+                        int n;
+                        while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+                    }
+                }
+                sh.setExecutable(true, false);
+                sh.setReadable(true, false);
+            }
 
             boolean ok = bb.exists();
             if (ok) {
