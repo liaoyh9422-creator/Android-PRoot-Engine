@@ -40,17 +40,24 @@ public class AssetExtractor {
         }
         ProcessBuilder pb;
         if (new File("/system/bin/toybox").exists()) {
-            pb = new ProcessBuilder("/system/bin/toybox", "tar", "xzf", tarFile.getAbsolutePath());
+            pb = new ProcessBuilder("/system/bin/toybox", "tar", "xzf", tarFile.getAbsolutePath(), "-C", destDir.getAbsolutePath());
         } else if (new File("/system/bin/tar").exists()) {
-            pb = new ProcessBuilder("/system/bin/tar", "xzf", tarFile.getAbsolutePath());
+            pb = new ProcessBuilder("/system/bin/tar", "xzf", tarFile.getAbsolutePath(), "-C", destDir.getAbsolutePath());
         } else {
-            pb = new ProcessBuilder("tar", "xzf", tarFile.getAbsolutePath());
+            pb = new ProcessBuilder("tar", "xzf", tarFile.getAbsolutePath(), "-C", destDir.getAbsolutePath());
         }
         pb.directory(destDir);
         pb.redirectErrorStream(true);
         Process tarProc = pb.start();
+        try (InputStream is = tarProc.getInputStream()) {
+            byte[] drain = new byte[4096];
+            while (is.read(drain) != -1) {}
+        }
         try {
-            tarProc.waitFor();
+            int exitCode = tarProc.waitFor();
+            if (exitCode != 0) {
+                android.util.Log.e("AssetExtractor", "tar extraction returned exit code " + exitCode);
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

@@ -831,7 +831,7 @@ public class MainActivity extends Activity {
                 Map<String, String> envMap = engine.buildEnvironment(config);
 
                 String shellPath = cmd.get(0);
-                String[] args = cmd.subList(1, cmd.size()).toArray(new String[0]);
+                String[] args = cmd.toArray(new String[0]);
                 String[] envArray = new String[envMap.size()];
                 int idx = 0;
                 for (Map.Entry<String, String> entry : envMap.entrySet()) {
