@@ -1,0 +1,10 @@
+pluginManagement {
+    repositories {
+        maven { url 'file:///opt/maven-repo' }
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+rootProject.name = "Android-PRoot-Engine"
+include ':app', ':core'

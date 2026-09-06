@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#F8F9FA">
+
+    <!-- Top Header & Language Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Android PRoot Engine"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#212529" />
+
+            <TextView
+                android:id="@+id/tv_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Status: Uninitialized"
+                android:textSize="13sp"
+                android:textColor="#6C757D"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- Language Switcher Buttons -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_lang_zh"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="中文"
+                android:textSize="11sp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_lang_en"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="EN"
+                android:textSize="11sp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:layout_marginStart="4dp" />
+
+            <Button
+                android:id="@+id/btn_lang_ja"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="日本語"
+                android:textSize="11sp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Action Buttons Row 1 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="14dp">
+
+        <Button
+            android:id="@+id/btn_init"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Init Engine" />
+
+        <Button
+            android:id="@+id/btn_run_uname"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Run uname" />
+
+        <Button
+            android:id="@+id/btn_run_script"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Run Script" />
+    </LinearLayout>
+
+    <!-- Action Buttons Row 2 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="6dp">
+
+        <Button
+            android:id="@+id/btn_stop"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Stop Process" />
+
+        <Button
+            android:id="@+id/btn_clear"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Clear Log" />
+    </LinearLayout>
+
+    <!-- Console Header -->
+    <TextView
+        android:id="@+id/tv_console_header"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Console Output:"
+        android:textStyle="bold"
+        android:textSize="13sp"
+        android:textColor="#495057"
+        android:layout_marginTop="12dp" />
+
+    <!-- Terminal Console Log Output -->
+    <ScrollView
+        android:id="@+id/scroll_log"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="6dp"
+        android:background="#1E1E1E"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/tv_log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:typeface="monospace"
+            android:textSize="12sp"
+            android:textColor="#4AF626"
+            android:text="Ready.\n" />
+    </ScrollView>
+
+</LinearLayout>
