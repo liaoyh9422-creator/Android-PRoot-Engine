@@ -51,6 +51,13 @@ public class I18n {
         BTN_RUN_SCRIPT,
         BTN_STOP,
         BTN_CLEAR,
+        BTN_COPY,
+        BTN_EXEC,
+        SECTION_CONTROL,
+        SECTION_TERMINAL,
+        HINT_CUSTOM_CMD,
+        TOAST_LOG_COPIED,
+        BADGE_LINES,
         CONSOLE_TITLE,
         LOG_INIT_START,
         LOG_INIT_SUCCESS,
@@ -87,7 +94,14 @@ public class I18n {
         zh.put(Key.BTN_RUN_UNAME, "测试 uname");
         zh.put(Key.BTN_RUN_SCRIPT, "运行测试脚本");
         zh.put(Key.BTN_STOP, "强杀进程");
-        zh.put(Key.BTN_CLEAR, "清空控制台");
+        zh.put(Key.BTN_CLEAR, "清空");
+        zh.put(Key.BTN_COPY, "复制");
+        zh.put(Key.BTN_EXEC, "执行");
+        zh.put(Key.SECTION_CONTROL, "控制面板");
+        zh.put(Key.SECTION_TERMINAL, "终端输出");
+        zh.put(Key.HINT_CUSTOM_CMD, "输入 Linux 命令, 如: uname -a, id, ls -la / ...");
+        zh.put(Key.TOAST_LOG_COPIED, "日志已复制到剪贴板");
+        zh.put(Key.BADGE_LINES, "%d 行");
         zh.put(Key.CONSOLE_TITLE, "控制台实时日志输出:");
         zh.put(Key.LOG_INIT_START, "[系统] 正在初始化 PRoot 虚拟化引擎...");
         zh.put(Key.LOG_INIT_SUCCESS, "[系统] PRoot 引擎初始化成功！");
@@ -117,7 +131,14 @@ public class I18n {
         en.put(Key.BTN_RUN_UNAME, "Run uname");
         en.put(Key.BTN_RUN_SCRIPT, "Run Script");
         en.put(Key.BTN_STOP, "Stop Process");
-        en.put(Key.BTN_CLEAR, "Clear Log");
+        en.put(Key.BTN_CLEAR, "Clear");
+        en.put(Key.BTN_COPY, "Copy");
+        en.put(Key.BTN_EXEC, "Run");
+        en.put(Key.SECTION_CONTROL, "CONTROL PANEL");
+        en.put(Key.SECTION_TERMINAL, "TERMINAL CONSOLE");
+        en.put(Key.HINT_CUSTOM_CMD, "Enter Linux command, e.g.: uname -a, id, ls -la / ...");
+        en.put(Key.TOAST_LOG_COPIED, "Logs copied to clipboard");
+        en.put(Key.BADGE_LINES, "%d lines");
         en.put(Key.CONSOLE_TITLE, "Console Real-time Output:");
         en.put(Key.LOG_INIT_START, "[System] Initializing PRoot virtualization engine...");
         en.put(Key.LOG_INIT_SUCCESS, "[System] PRoot Engine initialized successfully!");
@@ -147,7 +168,14 @@ public class I18n {
         ja.put(Key.BTN_RUN_UNAME, "uname 実行");
         ja.put(Key.BTN_RUN_SCRIPT, "スクリプト実行");
         ja.put(Key.BTN_STOP, "強制終了");
-        ja.put(Key.BTN_CLEAR, "ログ消去");
+        ja.put(Key.BTN_CLEAR, "消去");
+        ja.put(Key.BTN_COPY, "コピー");
+        ja.put(Key.BTN_EXEC, "実行");
+        ja.put(Key.SECTION_CONTROL, "コントロールパネル");
+        ja.put(Key.SECTION_TERMINAL, "ターミナルコンソール");
+        ja.put(Key.HINT_CUSTOM_CMD, "Linuxコマンドを入力 (例: uname -a, id, ls -la / ...)");
+        ja.put(Key.TOAST_LOG_COPIED, "ログをクリップボードにコピーしました");
+        ja.put(Key.BADGE_LINES, "%d 行");
         ja.put(Key.CONSOLE_TITLE, "コンソール出力 (リアルタイム):");
         ja.put(Key.LOG_INIT_START, "[システム] PRoot 仮想化エンジンを初期化しています...");
         ja.put(Key.LOG_INIT_SUCCESS, "[システム] PRoot エンジンの初期化が完了しました！");

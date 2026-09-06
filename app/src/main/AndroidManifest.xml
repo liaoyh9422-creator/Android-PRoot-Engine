@@ -8,7 +8,7 @@
         android:allowBackup="true"
         android:label="PRoot Sample"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.DeviceDefault.Light">
+        android:theme="@style/AppTheme">
         <activity
             android:name=".MainActivity"
             android:exported="true">

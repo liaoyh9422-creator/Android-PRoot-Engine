@@ -1,166 +1,291 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:background="#F8F9FA">
+    android:background="#0D1117"
+    android:fitsSystemWindows="true"
+    android:padding="12dp">
 
-    <!-- Top Header & Language Bar -->
+    <!-- 1. Top Hero Header Card -->
     <LinearLayout
+        android:id="@+id/card_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:orientation="vertical"
+        android:padding="12dp">
 
+        <!-- Title Row & Badges -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
             <TextView
                 android:id="@+id/tv_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Android PRoot Engine"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#E6EDF3" />
+
+            <!-- Language Switcher Bar -->
+            <LinearLayout
+                android:id="@+id/layout_lang_group"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Android PRoot Engine"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="#212529" />
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btn_lang_zh"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="中文"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/btn_lang_en"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="EN"
+                    android:textSize="11sp"
+                    android:layout_marginStart="4dp" />
+
+                <TextView
+                    android:id="@+id/btn_lang_ja"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="日本語"
+                    android:textSize="11sp"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Tech Stack Badges Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/badge_arch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ARM64" />
+
+            <TextView
+                android:id="@+id/badge_root"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Zero-Root" />
+
+            <TextView
+                android:id="@+id/badge_glibc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Glibc 2.38" />
+
+            <TextView
+                android:id="@+id/badge_saf"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="MT SAF" />
+        </LinearLayout>
+
+        <!-- Status Indicator Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <View
+                android:id="@+id/view_status_dot"
+                android:layout_width="8dp"
+                android:layout_height="8dp" />
 
             <TextView
                 android:id="@+id/tv_status"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="Status: Uninitialized"
-                android:textSize="13sp"
-                android:textColor="#6C757D"
-                android:layout_marginTop="2dp" />
+                android:textSize="12.5sp"
+                android:textColor="#E6EDF3"
+                android:layout_marginStart="8dp" />
         </LinearLayout>
+    </LinearLayout>
 
-        <!-- Language Switcher Buttons -->
-        <LinearLayout
+    <!-- 2. Control Actions Card -->
+    <LinearLayout
+        android:id="@+id/card_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/tv_section_control"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:text="CONTROL PANEL"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="#8B949E" />
 
-            <Button
-                android:id="@+id/btn_lang_zh"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="中文"
-                android:textSize="11sp"
-                android:minHeight="0dp"
-                android:minWidth="0dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp" />
+        <!-- Preset Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
 
-            <Button
-                android:id="@+id/btn_lang_en"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="EN"
-                android:textSize="11sp"
-                android:minHeight="0dp"
-                android:minWidth="0dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:layout_marginStart="4dp" />
+            <TextView
+                android:id="@+id/btn_init"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Init Engine" />
 
-            <Button
-                android:id="@+id/btn_lang_ja"
+            <TextView
+                android:id="@+id/btn_run_uname"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:text="Run uname" />
+
+            <TextView
+                android:id="@+id/btn_run_script"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:text="Run Script" />
+
+            <TextView
+                android:id="@+id/btn_stop"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:text="Stop" />
+        </LinearLayout>
+
+        <!-- Custom Command Execution Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <EditText
+                android:id="@+id/et_command"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Enter Linux command..."
+                android:textSize="12sp"
+                android:typeface="monospace"
+                android:textColor="#E6EDF3"
+                android:textColorHint="#8B949E"
+                android:singleLine="true"
+                android:imeOptions="actionGo"
+                android:padding="8dp" />
+
+            <TextView
+                android:id="@+id/btn_exec"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="日本語"
-                android:textSize="11sp"
-                android:minHeight="0dp"
-                android:minWidth="0dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:layout_marginStart="4dp" />
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Run" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Action Buttons Row 1 -->
+    <!-- 3. Terminal Console Output Card -->
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="14dp">
-
-        <Button
-            android:id="@+id/btn_init"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Init Engine" />
-
-        <Button
-            android:id="@+id/btn_run_uname"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Run uname" />
-
-        <Button
-            android:id="@+id/btn_run_script"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Run Script" />
-    </LinearLayout>
-
-    <!-- Action Buttons Row 2 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="6dp">
-
-        <Button
-            android:id="@+id/btn_stop"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Stop Process" />
-
-        <Button
-            android:id="@+id/btn_clear"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Clear Log" />
-    </LinearLayout>
-
-    <!-- Console Header -->
-    <TextView
-        android:id="@+id/tv_console_header"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Console Output:"
-        android:textStyle="bold"
-        android:textSize="13sp"
-        android:textColor="#495057"
-        android:layout_marginTop="12dp" />
-
-    <!-- Terminal Console Log Output -->
-    <ScrollView
-        android:id="@+id/scroll_log"
+        android:id="@+id/card_terminal"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="6dp"
-        android:background="#1E1E1E"
-        android:padding="10dp">
+        android:orientation="vertical"
+        android:layout_marginTop="8dp"
+        android:padding="12dp">
 
-        <TextView
-            android:id="@+id/tv_log"
+        <!-- Console Header Row -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:typeface="monospace"
-            android:textSize="12sp"
-            android:textColor="#4AF626"
-            android:text="Ready.\n" />
-    </ScrollView>
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tv_section_terminal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TERMINAL CONSOLE"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#8B949E" />
+
+            <TextView
+                android:id="@+id/badge_line_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="0 lines" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/btn_copy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Copy" />
+
+            <TextView
+                android:id="@+id/btn_clear"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Clear" />
+        </LinearLayout>
+
+        <!-- Terminal Output Viewport -->
+        <ScrollView
+            android:id="@+id/scroll_log"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="8dp"
+            android:padding="8dp">
+
+            <TextView
+                android:id="@+id/tv_log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:typeface="monospace"
+                android:textSize="11.5sp"
+                android:textColor="#7EE787"
+                android:textIsSelectable="true"
+                android:lineSpacingExtra="2dp"
+                android:text="PRoot Engine Shell Ready.\n" />
+        </ScrollView>
+    </LinearLayout>
 
 </LinearLayout>
