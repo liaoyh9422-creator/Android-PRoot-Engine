@@ -71,3 +71,4 @@
 | [`app/src/main/java/bin/mt/file/content/MTDataFilesWakeUpActivity.java`](file:///storage/emulated/0/projects/Android-PRoot-Engine/app/src/main/java/bin/mt/file/content/MTDataFilesWakeUpActivity.java) | **MT 管理器唤醒透明 Activity**，用于冷启动或受限状态下拉起进程以向外部安全提供 ContentProvider 数据通道 |
 | [`app/src/main/res/layout/activity_main.xml`](file:///storage/emulated/0/projects/Android-PRoot-Engine/app/src/main/res/layout/activity_main.xml) | 暗黑极客风格控制台布局，包含顶部状态徽章、多语言切换胶囊栏、控制面板按键组、命令交互行与终端日志窗口 |
 | [`app/src/main/res/values/styles.xml`](file:///storage/emulated/0/projects/Android-PRoot-Engine/app/src/main/res/values/styles.xml) | 全局 Material 暗色主题声明（`AppTheme`），匹配 `#0D1117` 窗口与导航条底色 |
+| [`app/src/main/res/mipmap-*/`](file:///storage/emulated/0/projects/Android-PRoot-Engine/app/src/main/res/) | **应用桌面启动图标集**（mdpi/hdpi/xhdpi/xxhdpi/xxxhdpi），包含纯黑底色方形与圆形图标 (`ic_launcher` / `ic_launcher_round`) |
