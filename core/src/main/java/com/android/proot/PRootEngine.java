@@ -134,6 +134,7 @@ public class PRootEngine {
         env.put("TERM", "xterm-256color");
         env.put("LANG", "C.UTF-8");
         env.put("LC_ALL", "C.UTF-8");
+        env.put("ENV", "/etc/profile");
         env.putAll(config.getEnvVars());
         return env;
     }
@@ -288,7 +289,7 @@ public class PRootEngine {
      */
     private boolean setupAlpineRootfs() {
         File busybox = new File(rootfsDir, "bin/busybox");
-        File marker = new File(rootfsDir, ".alpine_done_v4");
+        File marker = new File(rootfsDir, ".alpine_done_v5");
 
         if (busybox.exists() && marker.exists()) {
             return true;
@@ -313,6 +314,8 @@ public class PRootEngine {
             if (bb.exists()) bb.setExecutable(true, false);
             File apkBin = new File(rootfsDir, "sbin/apk");
             if (apkBin.exists()) apkBin.setExecutable(true, false);
+            File pigoBin = new File(rootfsDir, "usr/local/bin/pigo");
+            if (pigoBin.exists()) pigoBin.setExecutable(true, false);
 
             // Ensure bin/sh exists and uses a relative symlink to busybox
             // Absolute symlinks like '/bin/busybox' break when checked on Android host

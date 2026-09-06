@@ -331,7 +331,7 @@ public class MainActivity extends Activity {
         // Preset Actions
         btnInit.setOnClickListener(v -> initEngine());
         btnRunUname.setOnClickListener(v -> runTerminalSession("/bin/sh", "-c", "uname -a"));
-        btnRunScript.setOnClickListener(v -> runTerminalSession("/bin/sh")); // Launch interactive shell!
+        btnRunScript.setOnClickListener(v -> runTerminalSession("/bin/sh", "-l")); // Launch interactive shell!
         btnStop.setOnClickListener(v -> stopCurrentSession());
 
         // Custom Command Execution
@@ -503,7 +503,7 @@ public class MainActivity extends Activity {
                 if (ok) {
                     setStatus(State.READY, "", 0);
                     // Automatically launch interactive shell on ready!
-                    mainHandler.post(() -> runTerminalSession("/bin/sh"));
+                    mainHandler.post(() -> runTerminalSession("/bin/sh", "-l"));
                 } else {
                     setStatus(State.INIT_FAILED, "Native libraries missing", 0);
                 }
