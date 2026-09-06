@@ -33,17 +33,8 @@ import com.android.proot.sample.ui.UiTheme;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -70,19 +61,11 @@ public class MainActivity extends Activity {
     private FrameLayout frameTerminal;
     private HorizontalScrollView scrollKeybar;
 
-    // AI Configuration Constants
-    private static final String PREFS_AI = "proot_ai_config";
-    private static final String KEY_AI_PROVIDER = "ai_provider";
-    private static final String KEY_AI_KEY = "ai_key";
-    private static final String KEY_AI_URL = "ai_url";
-    private static final String KEY_AI_MODEL = "ai_model";
-
     // Header & Badges
     private TextView tvTitle;
     private TextView badgeArch;
     private TextView badgeRoot;
     private TextView badgeDistro;
-    private TextView badgeAgent;
     private TextView badgeSaf;
     private View viewStatusDot;
     private TextView tvStatus;
@@ -94,11 +77,9 @@ public class MainActivity extends Activity {
 
     // Control Actions
     private TextView tvSectionControl;
-    private TextView btnConfigKey;
     private TextView btnInit;
     private TextView btnRunUname;
     private TextView btnRunScript;
-    private TextView btnAgent;
     private TextView btnStop;
     private EditText etCommand;
     private TextView btnExec;
@@ -197,7 +178,6 @@ public class MainActivity extends Activity {
         badgeArch = findViewById(R.id.badge_arch);
         badgeRoot = findViewById(R.id.badge_root);
         badgeDistro = findViewById(R.id.badge_distro);
-        badgeAgent = findViewById(R.id.badge_agent);
         badgeSaf = findViewById(R.id.badge_saf);
         viewStatusDot = findViewById(R.id.view_status_dot);
         tvStatus = findViewById(R.id.tv_status);
@@ -207,11 +187,9 @@ public class MainActivity extends Activity {
         btnLangJa = findViewById(R.id.btn_lang_ja);
 
         tvSectionControl = findViewById(R.id.tv_section_control);
-        btnConfigKey = findViewById(R.id.btn_config_key);
         btnInit = findViewById(R.id.btn_init);
         btnRunUname = findViewById(R.id.btn_run_uname);
         btnRunScript = findViewById(R.id.btn_run_script);
-        btnAgent = findViewById(R.id.btn_agent);
         btnStop = findViewById(R.id.btn_stop);
         etCommand = findViewById(R.id.et_command);
         btnExec = findViewById(R.id.btn_exec);
@@ -252,16 +230,13 @@ public class MainActivity extends Activity {
         styleBadge(badgeArch, UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN);
         styleBadge(badgeRoot, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
         styleBadge(badgeDistro, UiTheme.C_GREEN, UiTheme.C_GREEN_BG, UiTheme.C_GREEN);
-        styleBadge(badgeAgent, UiTheme.C_YELLOW, UiTheme.C_YELLOW_BG, UiTheme.C_YELLOW);
         styleBadge(badgeSaf, UiTheme.C_DIM, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB);
         styleBadge(badgeLineCount, UiTheme.C_DIM, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB);
 
         // Action Micro-capsules
-        styleCapsule(btnConfigKey, UiTheme.C_YELLOW, UiTheme.C_YELLOW_BG, UiTheme.C_YELLOW);
         styleCapsule(btnInit, UiTheme.C_BLUE, UiTheme.C_BLUE_BG, UiTheme.C_BLUE);
         styleCapsule(btnRunUname, UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN);
         styleCapsule(btnRunScript, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
-        styleCapsule(btnAgent, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
         styleCapsule(btnStop, UiTheme.C_RED, UiTheme.C_RED_BG, UiTheme.C_RED);
         styleCapsule(btnExec, UiTheme.C_GREEN, UiTheme.C_GREEN_BG, UiTheme.C_GREEN);
 
@@ -357,8 +332,6 @@ public class MainActivity extends Activity {
         btnInit.setOnClickListener(v -> initEngine());
         btnRunUname.setOnClickListener(v -> runTerminalSession("/bin/sh", "-c", "uname -a"));
         btnRunScript.setOnClickListener(v -> runTerminalSession("/bin/sh")); // Launch interactive shell!
-        btnAgent.setOnClickListener(v -> launchAiAgent());
-        btnConfigKey.setOnClickListener(v -> showApiKeyDialog());
         btnStop.setOnClickListener(v -> stopCurrentSession());
 
         // Custom Command Execution
@@ -439,8 +412,6 @@ public class MainActivity extends Activity {
         btnInit.setText(I18n.get(I18n.Key.BTN_INIT));
         btnRunUname.setText(I18n.get(I18n.Key.BTN_RUN_UNAME));
         btnRunScript.setText("Shell (PTY)");
-        btnAgent.setText(I18n.get(I18n.Key.BTN_AGENT));
-        btnConfigKey.setText(I18n.get(I18n.Key.BTN_CONFIG_KEY));
         btnStop.setText(I18n.get(I18n.Key.BTN_STOP));
         btnExec.setText(I18n.get(I18n.Key.BTN_EXEC));
         btnCopy.setText(I18n.get(I18n.Key.BTN_COPY));
@@ -553,415 +524,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void launchAiAgent() {
-        SharedPreferences sp = getSharedPreferences(PREFS_AI, Context.MODE_PRIVATE);
-        String apiKey = sp.getString(KEY_AI_KEY, "").trim();
-        if (apiKey.isEmpty()) {
-            Toast.makeText(this, "Notice: Please configure AI API Key", Toast.LENGTH_SHORT).show();
-            showApiKeyDialog();
-            return;
-        }
-
-        syncAiderConfig(
-                sp.getString(KEY_AI_PROVIDER, "deepseek"),
-                apiKey,
-                sp.getString(KEY_AI_URL, ""),
-                sp.getString(KEY_AI_MODEL, "deepseek-chat")
-        );
-
-        runTerminalSession("/usr/local/bin/aider");
-    }
-
-    private void showApiKeyDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(I18n.get(I18n.Key.DIALOG_KEY_TITLE));
-
-        SharedPreferences sp = getSharedPreferences(PREFS_AI, Context.MODE_PRIVATE);
-        String savedProvider = sp.getString(KEY_AI_PROVIDER, "deepseek");
-        String savedKey = sp.getString(KEY_AI_KEY, "");
-        String savedUrl = sp.getString(KEY_AI_URL, "");
-        String savedModel = sp.getString(KEY_AI_MODEL, "deepseek-chat");
-
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(UiTheme.dp(this, 16), UiTheme.dp(this, 10), UiTheme.dp(this, 16), UiTheme.dp(this, 10));
-
-        TextView tvDesc = new TextView(this);
-        tvDesc.setText(I18n.get(I18n.Key.DIALOG_KEY_DESC));
-        tvDesc.setTextSize(12f);
-        tvDesc.setTextColor(Color.parseColor(UiTheme.C_DIM));
-        container.addView(tvDesc);
-
-        // Provider RadioGroup
-        TextView tvProvLabel = new TextView(this);
-        tvProvLabel.setText(I18n.get(I18n.Key.DIALOG_KEY_PROVIDER));
-        tvProvLabel.setTextSize(12f);
-        tvProvLabel.setTextColor(Color.parseColor(UiTheme.C_TEXT));
-        tvProvLabel.setPadding(0, UiTheme.dp(this, 8), 0, UiTheme.dp(this, 2));
-        container.addView(tvProvLabel);
-
-        RadioGroup rgProvider = new RadioGroup(this);
-        rgProvider.setOrientation(RadioGroup.HORIZONTAL);
-
-        RadioButton rbDeepSeek = new RadioButton(this);
-        rbDeepSeek.setText("DeepSeek");
-        rbDeepSeek.setTextColor(Color.parseColor(UiTheme.C_TEXT));
-
-        RadioButton rbOpenAI = new RadioButton(this);
-        rbOpenAI.setText("OpenAI");
-        rbOpenAI.setTextColor(Color.parseColor(UiTheme.C_TEXT));
-
-        RadioButton rbCustom = new RadioButton(this);
-        rbCustom.setText("Custom");
-        rbCustom.setTextColor(Color.parseColor(UiTheme.C_TEXT));
-
-        rgProvider.addView(rbDeepSeek);
-        rgProvider.addView(rbOpenAI);
-        rgProvider.addView(rbCustom);
-
-        if ("openai".equalsIgnoreCase(savedProvider)) {
-            rbOpenAI.setChecked(true);
-        } else if ("custom".equalsIgnoreCase(savedProvider)) {
-            rbCustom.setChecked(true);
-        } else {
-            rbDeepSeek.setChecked(true);
-        }
-        container.addView(rgProvider);
-
-        // API Key Field
-        TextView tvKeyLabel = new TextView(this);
-        tvKeyLabel.setText(I18n.get(I18n.Key.DIALOG_KEY_API_KEY));
-        tvKeyLabel.setTextSize(12f);
-        tvKeyLabel.setTextColor(Color.parseColor(UiTheme.C_TEXT));
-        tvKeyLabel.setPadding(0, UiTheme.dp(this, 8), 0, UiTheme.dp(this, 2));
-        container.addView(tvKeyLabel);
-
-        EditText etKey = new EditText(this);
-        etKey.setHint("sk-...");
-        etKey.setText(savedKey);
-        etKey.setTextSize(13f);
-        etKey.setTypeface(Typeface.MONOSPACE);
-        etKey.setBackground(UiTheme.roundRect(this, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER, 1, 4));
-        etKey.setTextColor(Color.parseColor(UiTheme.C_TEXT));
-        etKey.setHintTextColor(Color.parseColor(UiTheme.C_DIM));
-        etKey.setPadding(UiTheme.dp(this, 10), UiTheme.dp(this, 8), UiTheme.dp(this, 10), UiTheme.dp(this, 8));
-        etKey.setSingleLine(true);
-        container.addView(etKey);
-
-        // API Base URL Field
-        TextView tvUrlLabel = new TextView(this);
-        tvUrlLabel.setText(I18n.get(I18n.Key.DIALOG_KEY_URL));
-        tvUrlLabel.setTextSize(12f);
-        tvUrlLabel.setTextColor(Color.parseColor(UiTheme.C_TEXT));
-        tvUrlLabel.setPadding(0, UiTheme.dp(this, 8), 0, UiTheme.dp(this, 2));
-        container.addView(tvUrlLabel);
-
-        EditText etUrl = new EditText(this);
-        etUrl.setHint("https://api.deepseek.com");
-        etUrl.setText(savedUrl);
-        etUrl.setTextSize(13f);
-        etUrl.setTypeface(Typeface.MONOSPACE);
-        etUrl.setBackground(UiTheme.roundRect(this, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER, 1, 4));
-        etUrl.setTextColor(Color.parseColor(UiTheme.C_TEXT));
-        etUrl.setHintTextColor(Color.parseColor(UiTheme.C_DIM));
-        etUrl.setPadding(UiTheme.dp(this, 10), UiTheme.dp(this, 8), UiTheme.dp(this, 10), UiTheme.dp(this, 8));
-        etUrl.setSingleLine(true);
-        container.addView(etUrl);
-
-        // Model Field Header with Fetch Button
-        LinearLayout modelHeader = new LinearLayout(this);
-        modelHeader.setOrientation(LinearLayout.HORIZONTAL);
-        modelHeader.setGravity(Gravity.CENTER_VERTICAL);
-        modelHeader.setPadding(0, UiTheme.dp(this, 8), 0, UiTheme.dp(this, 2));
-
-        TextView tvModelLabel = new TextView(this);
-        tvModelLabel.setText(I18n.get(I18n.Key.DIALOG_KEY_MODEL));
-        tvModelLabel.setTextSize(12f);
-        tvModelLabel.setTextColor(Color.parseColor(UiTheme.C_TEXT));
-        LinearLayout.LayoutParams lpLabel = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
-        modelHeader.addView(tvModelLabel, lpLabel);
-
-        TextView btnFetchModels = new TextView(this);
-        btnFetchModels.setText("🔍 " + I18n.get(I18n.Key.BTN_FETCH_MODELS));
-        btnFetchModels.setTextSize(11f);
-        btnFetchModels.setTypeface(Typeface.DEFAULT_BOLD);
-        btnFetchModels.setTextColor(Color.parseColor(UiTheme.C_CYAN));
-        btnFetchModels.setBackground(UiTheme.roundRect(this, UiTheme.C_SURFACE_ALT, UiTheme.C_CYAN, 1, 4));
-        btnFetchModels.setPadding(UiTheme.dp(this, 8), UiTheme.dp(this, 3), UiTheme.dp(this, 8), UiTheme.dp(this, 3));
-        modelHeader.addView(btnFetchModels);
-
-        container.addView(modelHeader);
-
-        EditText etModel = new EditText(this);
-        etModel.setHint("deepseek-chat");
-        etModel.setText(savedModel);
-        etModel.setTextSize(13f);
-        etModel.setTypeface(Typeface.MONOSPACE);
-        etModel.setBackground(UiTheme.roundRect(this, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER, 1, 4));
-        etModel.setTextColor(Color.parseColor(UiTheme.C_TEXT));
-        etModel.setHintTextColor(Color.parseColor(UiTheme.C_DIM));
-        etModel.setPadding(UiTheme.dp(this, 10), UiTheme.dp(this, 8), UiTheme.dp(this, 10), UiTheme.dp(this, 8));
-        etModel.setSingleLine(true);
-        container.addView(etModel);
-
-        btnFetchModels.setOnClickListener(v -> {
-            String selectedProvider = rbDeepSeek.isChecked() ? "deepseek" : (rbOpenAI.isChecked() ? "openai" : "custom");
-            fetchAvailableModels(selectedProvider, etUrl.getText().toString().trim(), etKey.getText().toString().trim(), etModel);
-        });
-
-        rgProvider.setOnCheckedChangeListener((group, checkedId) -> {
-            if (checkedId == rbDeepSeek.getId()) {
-                if (etUrl.getText().toString().isEmpty() || etUrl.getText().toString().contains("openai.com")) {
-                    etUrl.setText("https://api.deepseek.com");
-                }
-                if (etModel.getText().toString().isEmpty() || etModel.getText().toString().contains("gpt")) {
-                    etModel.setText("deepseek-chat");
-                }
-            } else if (checkedId == rbOpenAI.getId()) {
-                if (etUrl.getText().toString().contains("deepseek.com")) {
-                    etUrl.setText("https://api.openai.com/v1");
-                }
-                if (etModel.getText().toString().contains("deepseek")) {
-                    etModel.setText("gpt-4o-mini");
-                }
-            }
-        });
-
-        ScrollView sv = new ScrollView(this);
-        sv.addView(container);
-        builder.setView(sv);
-
-        builder.setPositiveButton(I18n.get(I18n.Key.DIALOG_KEY_SAVE), (dialog, which) -> {
-            String selectedProvider = rbDeepSeek.isChecked() ? "deepseek" : (rbOpenAI.isChecked() ? "openai" : "custom");
-            String key = etKey.getText().toString().trim();
-            String url = etUrl.getText().toString().trim();
-            String model = etModel.getText().toString().trim();
-
-            sp.edit()
-                    .putString(KEY_AI_PROVIDER, selectedProvider)
-                    .putString(KEY_AI_KEY, key)
-                    .putString(KEY_AI_URL, url)
-                    .putString(KEY_AI_MODEL, model)
-                    .apply();
-
-            syncAiderConfig(selectedProvider, key, url, model);
-            Toast.makeText(this, I18n.get(I18n.Key.TOAST_KEY_SAVED), Toast.LENGTH_SHORT).show();
-        });
-
-        builder.setNegativeButton(I18n.get(I18n.Key.DIALOG_KEY_CANCEL), null);
-        builder.setNeutralButton("Aider", (dialog, which) -> {
-            runTerminalSession("/usr/local/bin/aider");
-        });
-
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-
-    private void syncAiderConfig(String provider, String apiKey, String apiUrl, String model) {
-        if (engine == null) return;
-        File rootfsDir = engine.getRootfsDir();
-        if (rootfsDir == null || !rootfsDir.exists()) return;
-
-        File rootHome = new File(rootfsDir, "root");
-        rootHome.mkdirs();
-
-        if (model == null || model.trim().isEmpty()) {
-            model = "deepseek".equalsIgnoreCase(provider) ? "deepseek-chat" : ("openai".equalsIgnoreCase(provider) ? "gpt-4o-mini" : "default");
-        }
-        model = model.trim();
-
-        String apiBase = apiUrl != null ? apiUrl.trim() : "";
-        if (apiBase.isEmpty()) {
-            if ("deepseek".equalsIgnoreCase(provider)) {
-                apiBase = "https://api.deepseek.com";
-            } else if ("openai".equalsIgnoreCase(provider)) {
-                apiBase = "https://api.openai.com/v1";
-            }
-        }
-
-        String aiderModel = model;
-        if ("deepseek".equalsIgnoreCase(provider)) {
-            if (!aiderModel.startsWith("deepseek/")) {
-                aiderModel = "deepseek/" + aiderModel;
-            }
-        } else if ("custom".equalsIgnoreCase(provider)) {
-            if (!aiderModel.contains("/")) {
-                aiderModel = "openai/" + aiderModel;
-            }
-        }
-
-        // 1. Write ~/.aider.conf.yml
-        File aiderConfigFile = new File(rootHome, ".aider.conf.yml");
-        StringBuilder yaml = new StringBuilder();
-        yaml.append("# Aider Configuration for Android-PRoot-Engine\n");
-        yaml.append("model: ").append(aiderModel).append("\n");
-        if (!apiBase.isEmpty()) {
-            yaml.append("openai-api-base: ").append(apiBase).append("\n");
-        }
-        if (apiKey != null && !apiKey.trim().isEmpty()) {
-            yaml.append("openai-api-key: ").append(apiKey.trim()).append("\n");
-        }
-        yaml.append("auto-commits: true\n");
-        yaml.append("attribute-author: false\n");
-        yaml.append("attribute-committer: false\n");
-
-        try (FileWriter fw = new FileWriter(aiderConfigFile)) {
-            fw.write(yaml.toString());
-            Log.i(TAG, "Synced .aider.conf.yml successfully to: " + aiderConfigFile.getAbsolutePath());
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to write .aider.conf.yml", e);
-        }
-
-        // 2. Write ~/.env
-        File envFile = new File(rootHome, ".env");
-        StringBuilder env = new StringBuilder();
-        env.append("AIDER_MODEL=").append(aiderModel).append("\n");
-        if (!apiBase.isEmpty()) {
-            env.append("OPENAI_API_BASE=").append(apiBase).append("\n");
-        }
-        if (apiKey != null && !apiKey.trim().isEmpty()) {
-            env.append("OPENAI_API_KEY=").append(apiKey.trim()).append("\n");
-            if ("deepseek".equalsIgnoreCase(provider)) {
-                env.append("DEEPSEEK_API_KEY=").append(apiKey.trim()).append("\n");
-            }
-        }
-        try (FileWriter fw = new FileWriter(envFile)) {
-            fw.write(env.toString());
-            Log.i(TAG, "Synced .env successfully to: " + envFile.getAbsolutePath());
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to write .env", e);
-        }
-
-        // 3. Backward-compatible aichat config
-        File aichatDir = new File(rootfsDir, "root/.config/aichat");
-        aichatDir.mkdirs();
-        File aichatFile = new File(aichatDir, "config.yaml");
-        try (FileWriter fw = new FileWriter(aichatFile)) {
-            fw.write("model: " + ("deepseek".equalsIgnoreCase(provider) ? "deepseek:" + model : model) + "\nstream: true\n");
-        } catch (Exception ignored) {}
-    }
-
-    private void fetchAvailableModels(String provider, String rawUrl, String apiKey, EditText etModel) {
-        String base = rawUrl != null ? rawUrl.trim() : "";
-        if (base.isEmpty()) {
-            if ("deepseek".equalsIgnoreCase(provider)) {
-                base = "https://api.deepseek.com";
-            } else if ("openai".equalsIgnoreCase(provider)) {
-                base = "https://api.openai.com";
-            } else {
-                Toast.makeText(this, I18n.get(I18n.Key.TOAST_ENTER_URL_FIRST), Toast.LENGTH_SHORT).show();
-                return;
-            }
-        }
-
-        while (base.endsWith("/")) {
-            base = base.substring(0, base.length() - 1);
-        }
-
-        List<String> endpoints = new ArrayList<>();
-        if (base.endsWith("/v1")) {
-            endpoints.add(base + "/models");
-            endpoints.add(base.substring(0, base.length() - 3) + "/api/tags");
-        } else {
-            endpoints.add(base + "/v1/models");
-            endpoints.add(base + "/models");
-            endpoints.add(base + "/api/tags");
-        }
-
-        Toast.makeText(this, I18n.get(I18n.Key.TOAST_FETCHING_MODELS), Toast.LENGTH_SHORT).show();
-
-        executor.execute(() -> {
-            List<String> modelList = new ArrayList<>();
-            String lastErrMsg = null;
-
-            for (String targetUrl : endpoints) {
-                HttpURLConnection conn = null;
-                try {
-                    URL u = new URL(targetUrl);
-                    conn = (HttpURLConnection) u.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(12000);
-                    conn.setRequestMethod("GET");
-                    conn.setRequestProperty("Accept", "application/json");
-                    conn.setRequestProperty("User-Agent", "Android-PRoot-Engine/Aider");
-                    if (apiKey != null && !apiKey.trim().isEmpty()) {
-                        conn.setRequestProperty("Authorization", "Bearer " + apiKey.trim());
-                    }
-
-                    int code = conn.getResponseCode();
-                    if (code == 200) {
-                        StringBuilder sb = new StringBuilder();
-                        try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-                            String line;
-                            while ((line = br.readLine()) != null) {
-                                sb.append(line);
-                            }
-                        }
-
-                        JSONObject json = new JSONObject(sb.toString());
-                        if (json.has("data")) {
-                            JSONArray arr = json.getJSONArray("data");
-                            for (int i = 0; i < arr.length(); i++) {
-                                JSONObject mObj = arr.getJSONObject(i);
-                                if (mObj.has("id")) {
-                                    modelList.add(mObj.getString("id"));
-                                }
-                            }
-                        } else if (json.has("models")) {
-                            JSONArray arr = json.getJSONArray("models");
-                            for (int i = 0; i < arr.length(); i++) {
-                                JSONObject mObj = arr.getJSONObject(i);
-                                if (mObj.has("name")) {
-                                    modelList.add(mObj.getString("name"));
-                                } else if (mObj.has("model")) {
-                                    modelList.add(mObj.getString("model"));
-                                }
-                            }
-                        }
-
-                        if (!modelList.isEmpty()) {
-                            break;
-                        }
-                    } else {
-                        lastErrMsg = "HTTP " + code + " (" + targetUrl + ")";
-                    }
-                } catch (Exception e) {
-                    lastErrMsg = e.getMessage();
-                } finally {
-                    if (conn != null) {
-                        try { conn.disconnect(); } catch (Exception ignored) {}
-                    }
-                }
-            }
-
-            final String errDetail = lastErrMsg;
-            mainHandler.post(() -> {
-                if (!modelList.isEmpty()) {
-                    Collections.sort(modelList, String.CASE_INSENSITIVE_ORDER);
-                    String[] modelArray = modelList.toArray(new String[0]);
-
-                    new AlertDialog.Builder(this)
-                            .setTitle(I18n.get(I18n.Key.DIALOG_SELECT_MODEL))
-                            .setItems(modelArray, (d, which) -> {
-                                String selected = modelArray[which];
-                                etModel.setText(selected);
-                                Toast.makeText(this, selected, Toast.LENGTH_SHORT).show();
-                            })
-                            .setNegativeButton(I18n.get(I18n.Key.DIALOG_KEY_CANCEL), null)
-                            .show();
-
-                    Toast.makeText(this, String.format(I18n.get(I18n.Key.TOAST_FETCH_MODELS_SUCCESS), modelList.size()), Toast.LENGTH_SHORT).show();
-                } else {
-                    String msg = I18n.get(I18n.Key.TOAST_FETCH_MODELS_FAIL);
-                    if (errDetail != null && !errDetail.isEmpty()) {
-                        msg += ": " + errDetail;
-                    }
-                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
-                }
-            });
-        });
-    }
-
     private void runTerminalSession(String... cmdArgs) {
         if (cmdArgs == null || cmdArgs.length == 0) return;
 
@@ -985,30 +547,6 @@ public class MainActivity extends Activity {
                 for (int i = 1; i < cmdArgs.length; i++) {
                     builder.addArg(cmdArgs[i]);
                 }
-
-                SharedPreferences sp = getSharedPreferences(PREFS_AI, Context.MODE_PRIVATE);
-                String aiKey = sp.getString(KEY_AI_KEY, "").trim();
-                String aiProvider = sp.getString(KEY_AI_PROVIDER, "deepseek");
-                String aiUrl = sp.getString(KEY_AI_URL, "").trim();
-                String aiModel = sp.getString(KEY_AI_MODEL, "deepseek-chat").trim();
-
-                if (!aiKey.isEmpty()) {
-                    builder.addEnv("OPENAI_API_KEY", aiKey);
-                    builder.addEnv("DEEPSEEK_API_KEY", aiKey);
-                }
-                if (!aiUrl.isEmpty()) {
-                    builder.addEnv("OPENAI_BASE_URL", aiUrl);
-                    builder.addEnv("OPENAI_API_BASE", aiUrl);
-                }
-                if (!aiModel.isEmpty()) {
-                    String aiderModel = aiModel;
-                    if ("deepseek".equalsIgnoreCase(aiProvider) && !aiderModel.startsWith("deepseek/")) {
-                        aiderModel = "deepseek/" + aiderModel;
-                    }
-                    builder.addEnv("AIDER_MODEL", aiderModel);
-                }
-
-                syncAiderConfig(aiProvider, aiKey, aiUrl, aiModel);
 
                 PRootConfig config = builder.build();
                 List<String> cmd = engine.buildCommandLine(config);

@@ -101,13 +101,6 @@
                 android:text="Alpine 3.20" />
 
             <TextView
-                android:id="@+id/badge_agent"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:text="Aider AI" />
-
-            <TextView
                 android:id="@+id/badge_saf"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -157,19 +150,12 @@
 
             <TextView
                 android:id="@+id/tv_section_control"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:text="CONTROL PANEL"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="#8B949E" />
-
-            <TextView
-                android:id="@+id/btn_config_key"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🔑 AI Key" />
         </LinearLayout>
 
         <!-- Preset Action Buttons -->
@@ -203,18 +189,10 @@
                 android:text="Shell" />
 
             <TextView
-                android:id="@+id/btn_agent"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1.2"
-                android:layout_marginStart="4dp"
-                android:text="🤖 Agent" />
-
-            <TextView
                 android:id="@+id/btn_stop"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="0.9"
+                android:layout_weight="1"
                 android:layout_marginStart="4dp"
                 android:text="Stop" />
         </LinearLayout>
