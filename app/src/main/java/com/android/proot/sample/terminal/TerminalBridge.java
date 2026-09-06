@@ -229,12 +229,29 @@ public class TerminalBridge implements TerminalSessionClient, TerminalViewClient
         Log.e(tag, "TerminalSession trace", e);
     }
 
+    public interface FontScaleListener {
+        void onScale(boolean increase);
+    }
+
+    private FontScaleListener fontScaleListener;
+
+    public void setFontScaleListener(FontScaleListener listener) {
+        this.fontScaleListener = listener;
+    }
+
     // ==========================================
     // TerminalViewClient Implementation
     // ==========================================
 
     @Override
     public float onScale(float scale) {
+        if (scale < 0.92f || scale > 1.08f) {
+            boolean increase = scale > 1.0f;
+            if (fontScaleListener != null) {
+                mainHandler.post(() -> fontScaleListener.onScale(increase));
+            }
+            return 1.0f;
+        }
         return scale;
     }
 

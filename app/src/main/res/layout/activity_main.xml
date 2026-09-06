@@ -150,12 +150,20 @@
 
             <TextView
                 android:id="@+id/tv_section_control"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="CONTROL PANEL"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="#8B949E" />
+
+            <TextView
+                android:id="@+id/btn_ai_config"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⚙ AI 配置"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- Preset Action Buttons -->
@@ -267,9 +275,16 @@
                 android:layout_weight="1" />
 
             <TextView
+                android:id="@+id/btn_fullscreen"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⛶ 全屏" />
+
+            <TextView
                 android:id="@+id/btn_font_minus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
                 android:text="A-" />
 
             <TextView

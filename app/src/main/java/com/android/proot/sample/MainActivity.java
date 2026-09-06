@@ -8,21 +8,23 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,8 +35,16 @@ import com.android.proot.sample.ui.UiTheme;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -55,6 +65,7 @@ public class MainActivity extends Activity {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     // UI Cards & Containers
+    private LinearLayout rootLayout;
     private View cardHeader;
     private View cardActions;
     private View cardTerminal;
@@ -77,6 +88,7 @@ public class MainActivity extends Activity {
 
     // Control Actions
     private TextView tvSectionControl;
+    private TextView btnAiConfig;
     private TextView btnInit;
     private TextView btnRunUname;
     private TextView btnRunScript;
@@ -87,12 +99,14 @@ public class MainActivity extends Activity {
     // Terminal Console & Keybar
     private TextView tvSectionTerminal;
     private TextView badgeLineCount;
+    private TextView btnFullscreen;
     private TextView btnFontMinus;
     private TextView btnFontPlus;
     private TextView btnCopy;
     private TextView btnClear;
     private TerminalView terminalView;
     private int terminalFontSize = 12;
+    private boolean isFullScreen = false;
 
     // Keybar Buttons
     private TextView keyEsc;
@@ -126,6 +140,11 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         UiTheme.setupImmersiveStatusBar(this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(lp);
+        }
         setContentView(R.layout.activity_main);
 
         // 1. Initialize Pure Java I18n
@@ -153,6 +172,14 @@ public class MainActivity extends Activity {
                 badgeLineCount.setText("Exit: " + exitCode);
             }
         });
+        terminalBridge.setFontScaleListener(increase -> {
+            if (increase) {
+                terminalFontSize = Math.min(terminalFontSize + 1, 32);
+            } else {
+                terminalFontSize = Math.max(terminalFontSize - 1, 8);
+            }
+            terminalView.setTextSize(terminalFontSize);
+        });
 
         // 5. Apply CLIProxyAPI-style Themes & Drawables
         applyUiTheme();
@@ -168,6 +195,7 @@ public class MainActivity extends Activity {
     }
 
     private void bindViews() {
+        rootLayout = findViewById(R.id.root_layout);
         cardHeader = findViewById(R.id.card_header);
         cardActions = findViewById(R.id.card_actions);
         cardTerminal = findViewById(R.id.card_terminal);
@@ -187,6 +215,7 @@ public class MainActivity extends Activity {
         btnLangJa = findViewById(R.id.btn_lang_ja);
 
         tvSectionControl = findViewById(R.id.tv_section_control);
+        btnAiConfig = findViewById(R.id.btn_ai_config);
         btnInit = findViewById(R.id.btn_init);
         btnRunUname = findViewById(R.id.btn_run_uname);
         btnRunScript = findViewById(R.id.btn_run_script);
@@ -196,6 +225,7 @@ public class MainActivity extends Activity {
 
         tvSectionTerminal = findViewById(R.id.tv_section_terminal);
         badgeLineCount = findViewById(R.id.badge_line_count);
+        btnFullscreen = findViewById(R.id.btn_fullscreen);
         btnFontMinus = findViewById(R.id.btn_font_minus);
         btnFontPlus = findViewById(R.id.btn_font_plus);
         btnCopy = findViewById(R.id.btn_copy);
@@ -234,6 +264,7 @@ public class MainActivity extends Activity {
         styleBadge(badgeLineCount, UiTheme.C_DIM, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB);
 
         // Action Micro-capsules
+        styleCapsule(btnAiConfig, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
         styleCapsule(btnInit, UiTheme.C_BLUE, UiTheme.C_BLUE_BG, UiTheme.C_BLUE);
         styleCapsule(btnRunUname, UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN);
         styleCapsule(btnRunScript, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
@@ -241,6 +272,7 @@ public class MainActivity extends Activity {
         styleCapsule(btnExec, UiTheme.C_GREEN, UiTheme.C_GREEN_BG, UiTheme.C_GREEN);
 
         // Terminal Top Action Buttons
+        styleCapsule(btnFullscreen, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
         styleCapsule(btnFontMinus, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
         styleCapsule(btnFontPlus, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
         styleCapsule(btnCopy, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
@@ -329,9 +361,10 @@ public class MainActivity extends Activity {
         btnLangJa.setOnClickListener(v -> switchLanguage(I18n.Language.JA));
 
         // Preset Actions
+        btnAiConfig.setOnClickListener(v -> showAiConfigDialog());
         btnInit.setOnClickListener(v -> initEngine());
-        btnRunUname.setOnClickListener(v -> runTerminalSession("/bin/sh", "-c", "uname -a"));
-        btnRunScript.setOnClickListener(v -> runTerminalSession("/bin/sh", "-l")); // Launch interactive shell!
+        btnRunUname.setOnClickListener(v -> runTerminalSession(getDefaultShell(), "-c", "uname -a"));
+        btnRunScript.setOnClickListener(v -> runTerminalSession(getDefaultShell(), "-l")); // Launch interactive shell!
         btnStop.setOnClickListener(v -> stopCurrentSession());
 
         // Custom Command Execution
@@ -344,9 +377,10 @@ public class MainActivity extends Activity {
             return false;
         });
 
-        // Font scaling
+        // Fullscreen and Font scaling
+        btnFullscreen.setOnClickListener(v -> toggleFullScreen());
         btnFontPlus.setOnClickListener(v -> {
-            terminalFontSize = Math.min(terminalFontSize + 1, 28);
+            terminalFontSize = Math.min(terminalFontSize + 1, 32);
             terminalView.setTextSize(terminalFontSize);
         });
         btnFontMinus.setOnClickListener(v -> {
@@ -395,7 +429,7 @@ public class MainActivity extends Activity {
         if (currentSession != null && currentSession.isRunning()) {
             terminalBridge.sendString(currentSession, cmd + "\n");
         } else {
-            runTerminalSession("/bin/sh", "-c", cmd);
+            runTerminalSession(getDefaultShell(), "-c", cmd);
         }
     }
 
@@ -409,6 +443,8 @@ public class MainActivity extends Activity {
         tvSectionControl.setText(I18n.get(I18n.Key.SECTION_CONTROL));
         tvSectionTerminal.setText(I18n.get(I18n.Key.SECTION_TERMINAL));
 
+        btnAiConfig.setText(I18n.get(I18n.Key.BTN_AI_CONFIG));
+        btnFullscreen.setText(isFullScreen ? I18n.get(I18n.Key.BTN_EXIT_FULLSCREEN) : I18n.get(I18n.Key.BTN_FULLSCREEN));
         btnInit.setText(I18n.get(I18n.Key.BTN_INIT));
         btnRunUname.setText(I18n.get(I18n.Key.BTN_RUN_UNAME));
         btnRunScript.setText("Shell (PTY)");
@@ -494,6 +530,14 @@ public class MainActivity extends Activity {
         updateStatusDot(dotColor);
     }
 
+    private String getDefaultShell() {
+        File rootfs = engine != null ? engine.getRootfsDir() : null;
+        if (rootfs != null && new File(rootfs, "bin/bash").exists()) {
+            return "/bin/bash";
+        }
+        return "/bin/sh";
+    }
+
     private void initEngine() {
         setStatus(State.INITIALIZING, "", 0);
 
@@ -501,9 +545,10 @@ public class MainActivity extends Activity {
             try {
                 boolean ok = engine.initialize();
                 if (ok) {
+                    syncPigoConfigToRootfs();
                     setStatus(State.READY, "", 0);
                     // Automatically launch interactive shell on ready!
-                    mainHandler.post(() -> runTerminalSession("/bin/sh", "-l"));
+                    mainHandler.post(() -> runTerminalSession(getDefaultShell(), "-l"));
                 } else {
                     setStatus(State.INIT_FAILED, "Native libraries missing", 0);
                 }
@@ -587,6 +632,331 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 Log.e(TAG, "Error running terminal session", e);
                 setStatus(State.ERROR, e.getMessage(), -1);
+            }
+        });
+    }
+
+    // ==========================================
+    // Fullscreen Mode Handling (Immersive Sticky)
+    // ==========================================
+
+    private void toggleFullScreen() {
+        isFullScreen = !isFullScreen;
+        applyFullScreen(isFullScreen);
+    }
+
+    private void applyFullScreen(boolean fullScreen) {
+        View decorView = getWindow().getDecorView();
+        if (fullScreen) {
+            cardHeader.setVisibility(View.GONE);
+            cardActions.setVisibility(View.GONE);
+            if (rootLayout != null) {
+                rootLayout.setFitsSystemWindows(false);
+                rootLayout.setPadding(0, 0, 0, 0);
+            }
+
+            int flags = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+            decorView.setSystemUiVisibility(flags);
+
+            btnFullscreen.setText(I18n.get(I18n.Key.BTN_EXIT_FULLSCREEN));
+            styleCapsule(btnFullscreen, UiTheme.C_YELLOW, UiTheme.C_YELLOW_BG, UiTheme.C_YELLOW);
+        } else {
+            cardHeader.setVisibility(View.VISIBLE);
+            cardActions.setVisibility(View.VISIBLE);
+            if (rootLayout != null) {
+                rootLayout.setFitsSystemWindows(true);
+                int pad = UiTheme.dp(this, 12);
+                rootLayout.setPadding(pad, pad, pad, pad);
+            }
+
+            decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+
+            btnFullscreen.setText(I18n.get(I18n.Key.BTN_FULLSCREEN));
+            styleCapsule(btnFullscreen, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && isFullScreen) {
+            applyFullScreen(true);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isFullScreen) {
+            toggleFullScreen();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    // ==========================================
+    // Pigo AI Agent Quick Configuration & Launch
+    // ==========================================
+
+    private void showAiConfigDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_pigo_config, null);
+        builder.setView(dialogView);
+        AlertDialog dialog = builder.create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        TextView tvTitle = dialogView.findViewById(R.id.tv_dialog_title);
+        TextView badgePigo = dialogView.findViewById(R.id.badge_dialog_pigo);
+        TextView btnPresetOpenRouter = dialogView.findViewById(R.id.btn_preset_openrouter);
+        TextView btnPresetDeepSeek = dialogView.findViewById(R.id.btn_preset_deepseek);
+        EditText etBaseUrl = dialogView.findViewById(R.id.et_pigo_base_url);
+        EditText etApiKey = dialogView.findViewById(R.id.et_pigo_api_key);
+        CheckBox cbShowKey = dialogView.findViewById(R.id.cb_show_key);
+        EditText etModel = dialogView.findViewById(R.id.et_pigo_model);
+        TextView btnFetchModels = dialogView.findViewById(R.id.btn_fetch_models);
+        CheckBox cbApprove = dialogView.findViewById(R.id.cb_pigo_approve);
+        TextView btnCancel = dialogView.findViewById(R.id.btn_dialog_cancel);
+        TextView btnSave = dialogView.findViewById(R.id.btn_dialog_save);
+        TextView btnSaveRun = dialogView.findViewById(R.id.btn_dialog_save_and_run);
+
+        // Styling dialog components
+        dialogView.findViewById(R.id.dialog_container).setBackground(UiTheme.roundRect(this, UiTheme.C_SURFACE, UiTheme.C_BORDER, 1, 10));
+        styleBadge(badgePigo, UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN);
+        styleCapsule(btnPresetOpenRouter, UiTheme.C_BLUE, UiTheme.C_BLUE_BG, UiTheme.C_BLUE);
+        styleCapsule(btnPresetDeepSeek, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
+        styleCapsule(btnFetchModels, UiTheme.C_YELLOW, UiTheme.C_YELLOW_BG, UiTheme.C_YELLOW);
+        styleCapsule(btnCancel, UiTheme.C_DIM, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
+        styleCapsule(btnSave, UiTheme.C_BLUE, UiTheme.C_BLUE_BG, UiTheme.C_BLUE);
+        styleCapsule(btnSaveRun, UiTheme.C_GREEN, UiTheme.C_GREEN_BG, UiTheme.C_GREEN);
+
+        etBaseUrl.setBackground(UiTheme.roundRect(this, UiTheme.C_BG, UiTheme.C_BORDER_SUB, 1, 6));
+        etApiKey.setBackground(UiTheme.roundRect(this, UiTheme.C_BG, UiTheme.C_BORDER_SUB, 1, 6));
+        etModel.setBackground(UiTheme.roundRect(this, UiTheme.C_BG, UiTheme.C_BORDER_SUB, 1, 6));
+
+        // Load saved values (Default empty, NEVER hardcode user credentials!)
+        SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
+        String defUrl = sp.getString("base_url", "");
+        String defKey = sp.getString("api_key", "");
+        String defModel = sp.getString("model", "");
+        boolean defApprove = sp.getBoolean("approve", true);
+
+        etBaseUrl.setText(defUrl);
+        etApiKey.setText(defKey);
+        etModel.setText(defModel);
+        cbApprove.setChecked(defApprove);
+
+        // Password visibility toggle
+        cbShowKey.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                etApiKey.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+            } else {
+                etApiKey.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            }
+            etApiKey.setSelection(etApiKey.getText().length());
+        });
+
+        // Preset buttons
+        btnPresetOpenRouter.setOnClickListener(v -> {
+            etBaseUrl.setText("https://openrouter.ai/api/v1");
+            etModel.setText("openrouter/free");
+        });
+        btnPresetDeepSeek.setOnClickListener(v -> {
+            etBaseUrl.setText("https://api.deepseek.com/v1");
+            etModel.setText("deepseek-chat");
+        });
+
+        // Fetch models button
+        btnFetchModels.setOnClickListener(v -> {
+            String url = etBaseUrl.getText().toString().trim();
+            String key = etApiKey.getText().toString().trim();
+            if (url.isEmpty()) {
+                Toast.makeText(this, "请先填写 Base URL", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Toast.makeText(this, I18n.get(I18n.Key.TOAST_FETCHING_MODELS), Toast.LENGTH_SHORT).show();
+            fetchModels(url, key, models -> {
+                if (models.isEmpty()) {
+                    Toast.makeText(this, "未从该端点找到模型", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Toast.makeText(this, String.format(I18n.get(I18n.Key.TOAST_FETCH_SUCCESS), models.size()), Toast.LENGTH_SHORT).show();
+                new AlertDialog.Builder(this)
+                        .setTitle("选择模型 (" + models.size() + ")")
+                        .setItems(models.toArray(new String[0]), (d, which) -> {
+                            etModel.setText(models.get(which));
+                        })
+                        .show();
+            }, err -> {
+                Toast.makeText(this, String.format(I18n.get(I18n.Key.TOAST_FETCH_FAIL), err), Toast.LENGTH_LONG).show();
+            });
+        });
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        btnSave.setOnClickListener(v -> {
+            savePigoConfig(
+                    etBaseUrl.getText().toString().trim(),
+                    etApiKey.getText().toString().trim(),
+                    etModel.getText().toString().trim(),
+                    cbApprove.isChecked()
+            );
+            Toast.makeText(this, I18n.get(I18n.Key.TOAST_CONFIG_SAVED), Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+
+        btnSaveRun.setOnClickListener(v -> {
+            savePigoConfig(
+                    etBaseUrl.getText().toString().trim(),
+                    etApiKey.getText().toString().trim(),
+                    etModel.getText().toString().trim(),
+                    cbApprove.isChecked()
+            );
+            dialog.dismiss();
+            launchPigoSession();
+        });
+
+        dialog.show();
+    }
+
+    private void launchPigoSession() {
+        if (currentSession != null && currentSession.isRunning()) {
+            terminalBridge.sendString(currentSession, "pigo\n");
+            Toast.makeText(this, "已在当前终端启动 pigo", Toast.LENGTH_SHORT).show();
+        } else {
+            runTerminalSession("/usr/local/bin/pigo");
+        }
+    }
+
+    private void savePigoConfig(String baseUrl, String apiKey, String model, boolean approve) {
+        SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
+        sp.edit()
+                .putString("base_url", baseUrl)
+                .putString("api_key", apiKey)
+                .putString("model", model)
+                .putBoolean("approve", approve)
+                .apply();
+
+        syncPigoConfigToRootfs();
+    }
+
+    private void syncPigoConfigToRootfs() {
+        SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
+        String baseUrl = sp.getString("base_url", "").trim();
+        String apiKey = sp.getString("api_key", "").trim();
+        String model = sp.getString("model", "").trim();
+        boolean approve = sp.getBoolean("approve", true);
+
+        File rootfs = engine != null ? engine.getRootfsDir() : null;
+        if (rootfs == null || !rootfs.exists()) {
+            return;
+        }
+
+        File pigoDir = new File(rootfs, "root/.config/pigo");
+        pigoDir.mkdirs();
+        File configFile = new File(pigoDir, "config.toml");
+        StringBuilder sb = new StringBuilder();
+        if (!model.isEmpty()) {
+            sb.append("model = \"").append(escapeToml(model)).append("\"\n");
+        }
+        sb.append("protocol = \"openai\"\n");
+        if (!baseUrl.isEmpty()) {
+            sb.append("base_url = \"").append(escapeToml(baseUrl)).append("\"\n");
+        }
+        if (!apiKey.isEmpty()) {
+            sb.append("api_key = \"").append(escapeToml(apiKey)).append("\"\n");
+        }
+        sb.append("approve = ").append(approve).append("\n");
+
+        try (FileWriter fw = new FileWriter(configFile)) {
+            fw.write(sb.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to write config.toml", e);
+        }
+
+        File envFile = new File(rootfs, "root/.pigo.env");
+        try (FileWriter fw = new FileWriter(envFile)) {
+            if (!apiKey.isEmpty()) {
+                fw.write("export OPENCODE_API_KEY=\"" + escapeToml(apiKey) + "\"\n");
+            }
+            if (!baseUrl.isEmpty()) {
+                fw.write("export OPENCODE_GO_BASE_URL=\"" + escapeToml(baseUrl) + "\"\n");
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private String escapeToml(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    interface ModelSuccessCallback {
+        void onSuccess(List<String> models);
+    }
+
+    interface ModelErrorCallback {
+        void onError(String error);
+    }
+
+    private void fetchModels(String baseUrl, String apiKey, ModelSuccessCallback onSuccess, ModelErrorCallback onError) {
+        executor.execute(() -> {
+            try {
+                String target = baseUrl.trim();
+                while (target.endsWith("/")) {
+                    target = target.substring(0, target.length() - 1);
+                }
+                if (!target.endsWith("/models")) {
+                    target = target + "/models";
+                }
+                URL url = new URL(target);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                if (!apiKey.isEmpty()) {
+                    conn.setRequestProperty("Authorization", "Bearer " + apiKey.trim());
+                }
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(15000);
+
+                int code = conn.getResponseCode();
+                if (code >= 200 && code < 300) {
+                    InputStream is = conn.getInputStream();
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    byte[] buf = new byte[4096];
+                    int n;
+                    while ((n = is.read(buf)) != -1) baos.write(buf, 0, n);
+                    String resp = baos.toString("UTF-8");
+                    JSONObject json = new JSONObject(resp);
+                    JSONArray data = json.optJSONArray("data");
+                    List<String> models = new ArrayList<>();
+                    if (data != null) {
+                        for (int i = 0; i < data.length(); i++) {
+                            JSONObject m = data.getJSONObject(i);
+                            String id = m.optString("id");
+                            if (!id.isEmpty()) models.add(id);
+                        }
+                    }
+                    mainHandler.post(() -> onSuccess.onSuccess(models));
+                } else {
+                    InputStream es = conn.getErrorStream();
+                    String errStr = "";
+                    if (es != null) {
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        byte[] buf = new byte[2048];
+                        int n;
+                        while ((n = es.read(buf)) != -1) baos.write(buf, 0, n);
+                        errStr = baos.toString("UTF-8");
+                    }
+                    final String finalErr = "HTTP " + code + (errStr.isEmpty() ? "" : ": " + errStr);
+                    mainHandler.post(() -> onError.onError(finalErr));
+                }
+            } catch (Exception e) {
+                mainHandler.post(() -> onError.onError(e.getMessage()));
             }
         });
     }

@@ -68,7 +68,15 @@ public class I18n {
         LOG_KILLING_TREE,
         LOG_TREE_KILLED,
         LOG_NO_PROCESS,
-        LOG_LANG_SWITCHED
+        LOG_LANG_SWITCHED,
+        BTN_AI_CONFIG,
+        BTN_FULLSCREEN,
+        BTN_EXIT_FULLSCREEN,
+        TITLE_AI_CONFIG,
+        TOAST_CONFIG_SAVED,
+        TOAST_FETCHING_MODELS,
+        TOAST_FETCH_SUCCESS,
+        TOAST_FETCH_FAIL
     }
 
     private static final Map<Language, Map<Key, String>> STRINGS = new HashMap<>();
@@ -113,6 +121,14 @@ public class I18n {
         zh.put(Key.LOG_TREE_KILLED, "[系统] 进程树清理完毕。");
         zh.put(Key.LOG_NO_PROCESS, "[系统] 当前无正在运行的进程。");
         zh.put(Key.LOG_LANG_SWITCHED, "[系统] 界面语言已切换为：简体中文");
+        zh.put(Key.BTN_AI_CONFIG, "⚙ AI 配置");
+        zh.put(Key.BTN_FULLSCREEN, "⛶ 全屏");
+        zh.put(Key.BTN_EXIT_FULLSCREEN, "还原");
+        zh.put(Key.TITLE_AI_CONFIG, "Pigo AI 智能体配置");
+        zh.put(Key.TOAST_CONFIG_SAVED, "Pigo 配置已写入 ~/.config/pigo/config.toml");
+        zh.put(Key.TOAST_FETCHING_MODELS, "正在向端点获取可用模型列表...");
+        zh.put(Key.TOAST_FETCH_SUCCESS, "成功获取 %d 个可用模型");
+        zh.put(Key.TOAST_FETCH_FAIL, "获取模型失败: %s");
         STRINGS.put(Language.ZH_CN, zh);
 
         // --- 2. English (EN) ---
@@ -150,6 +166,14 @@ public class I18n {
         en.put(Key.LOG_TREE_KILLED, "[System] Process tree terminated.");
         en.put(Key.LOG_NO_PROCESS, "[System] No active process running.");
         en.put(Key.LOG_LANG_SWITCHED, "[System] UI Language switched to: English");
+        en.put(Key.BTN_AI_CONFIG, "⚙ AI Config");
+        en.put(Key.BTN_FULLSCREEN, "⛶ Full");
+        en.put(Key.BTN_EXIT_FULLSCREEN, "Exit Full");
+        en.put(Key.TITLE_AI_CONFIG, "Pigo AI Agent Configuration");
+        en.put(Key.TOAST_CONFIG_SAVED, "Pigo config written to ~/.config/pigo/config.toml");
+        en.put(Key.TOAST_FETCHING_MODELS, "Fetching available models from endpoint...");
+        en.put(Key.TOAST_FETCH_SUCCESS, "Fetched %d available models");
+        en.put(Key.TOAST_FETCH_FAIL, "Failed to fetch models: %s");
         STRINGS.put(Language.EN, en);
 
         // --- 3. 日本語 (JA) ---
@@ -180,13 +204,21 @@ public class I18n {
         ja.put(Key.LOG_INIT_START, "[システム] PRoot 仮想化エンジンを初期化しています...");
         ja.put(Key.LOG_INIT_SUCCESS, "[システム] PRoot エンジンの初期化が完了しました！");
         ja.put(Key.LOG_INIT_FAIL, "[エラー] 初期化に失敗しました。logcat を確認してください。");
-        ja.put(Key.LOG_STOPPING, "[システム] 既存のプロセスを終了しています...");
+        ja.put(Key.LOG_STOPPING, "[系统] 既存のプロセスを終了しています...");
         ja.put(Key.LOG_STARTED, "[システム] プロセスが起動しました (PID: ");
         ja.put(Key.LOG_EXITED, "[システム] プロセスが終了しました (終了コード: ");
         ja.put(Key.LOG_KILLING_TREE, "[システム] プロセスツリーを強制終了中 PID=");
         ja.put(Key.LOG_TREE_KILLED, "[システム] プロセスツリーが終了しました。");
         ja.put(Key.LOG_NO_PROCESS, "[システム] 実行中のプロセスはありません。");
         ja.put(Key.LOG_LANG_SWITCHED, "[システム] 言語を日本語に切り替えました。");
+        ja.put(Key.BTN_AI_CONFIG, "⚙ AI 設定");
+        ja.put(Key.BTN_FULLSCREEN, "⛶ 全画面");
+        ja.put(Key.BTN_EXIT_FULLSCREEN, "戻す");
+        ja.put(Key.TITLE_AI_CONFIG, "Pigo AI エージェント設定");
+        ja.put(Key.TOAST_CONFIG_SAVED, "~/.config/pigo/config.toml に保存しました");
+        ja.put(Key.TOAST_FETCHING_MODELS, "モデル一覧を取得中...");
+        ja.put(Key.TOAST_FETCH_SUCCESS, "%d 個のモデルを取得しました");
+        ja.put(Key.TOAST_FETCH_FAIL, "モデル取得失敗: %s");
         STRINGS.put(Language.JA, ja);
     }
 

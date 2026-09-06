@@ -289,7 +289,7 @@ public class PRootEngine {
      */
     private boolean setupAlpineRootfs() {
         File busybox = new File(rootfsDir, "bin/busybox");
-        File marker = new File(rootfsDir, ".alpine_done_v5");
+        File marker = new File(rootfsDir, ".alpine_done_v6");
 
         if (busybox.exists() && marker.exists()) {
             return true;
@@ -312,6 +312,8 @@ public class PRootEngine {
             // Ensure critical permissions
             File bb = new File(rootfsDir, "bin/busybox");
             if (bb.exists()) bb.setExecutable(true, false);
+            File bashBin = new File(rootfsDir, "bin/bash");
+            if (bashBin.exists()) bashBin.setExecutable(true, false);
             File apkBin = new File(rootfsDir, "sbin/apk");
             if (apkBin.exists()) apkBin.setExecutable(true, false);
             File pigoBin = new File(rootfsDir, "usr/local/bin/pigo");

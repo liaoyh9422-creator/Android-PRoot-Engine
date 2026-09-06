@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dialog_scroll_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#161B22">
+
+    <LinearLayout
+        android:id="@+id/dialog_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Title Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="12dp">
+
+            <TextView
+                android:id="@+id/tv_dialog_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Pigo AI 智能体配置"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#E6EDF3" />
+
+            <TextView
+                android:id="@+id/badge_dialog_pigo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="v0.5.4"
+                android:textSize="10sp"
+                android:typeface="monospace" />
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#30363D"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Quick Presets Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="快速预设:"
+                android:textSize="11.5sp"
+                android:textColor="#8B949E" />
+
+            <TextView
+                android:id="@+id/btn_preset_openrouter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="OpenRouter"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/btn_preset_deepseek"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="DeepSeek 官方"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- 1. Base URL -->
+        <TextView
+            android:id="@+id/tv_label_base_url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Base URL (API 端点):"
+            android:textSize="12sp"
+            android:textColor="#8B949E"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/et_pigo_base_url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="https://api.openai.com/v1"
+            android:textSize="12sp"
+            android:typeface="monospace"
+            android:textColor="#E6EDF3"
+            android:textColorHint="#484F58"
+            android:singleLine="true"
+            android:padding="8dp"
+            android:layout_marginBottom="10dp" />
+
+        <!-- 2. API Key -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="4dp">
+
+            <TextView
+                android:id="@+id/tv_label_api_key"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="API Key (访问密钥):"
+                android:textSize="12sp"
+                android:textColor="#8B949E" />
+
+            <CheckBox
+                android:id="@+id/cb_show_key"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="显示密钥"
+                android:textSize="11sp"
+                android:textColor="#8B949E" />
+        </LinearLayout>
+
+        <EditText
+            android:id="@+id/et_pigo_api_key"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="sk-..."
+            android:textSize="12sp"
+            android:typeface="monospace"
+            android:textColor="#E6EDF3"
+            android:textColorHint="#484F58"
+            android:inputType="textPassword"
+            android:singleLine="true"
+            android:padding="8dp"
+            android:layout_marginBottom="10dp" />
+
+        <!-- 3. Model Name & Fetch Button -->
+        <TextView
+            android:id="@+id/tv_label_model"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="模型名称 (Model):"
+            android:textSize="12sp"
+            android:textColor="#8B949E"
+            android:layout_marginBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="10dp">
+
+            <EditText
+                android:id="@+id/et_pigo_model"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="deepseek-chat"
+                android:textSize="12sp"
+                android:typeface="monospace"
+                android:textColor="#E6EDF3"
+                android:textColorHint="#484F58"
+                android:singleLine="true"
+                android:padding="8dp" />
+
+            <TextView
+                android:id="@+id/btn_fetch_models"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="⚡ 拉取模型"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+        <!-- 4. Approve Checkbox -->
+        <CheckBox
+            android:id="@+id/cb_pigo_approve"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="自动授权工具调用 (--approve，免逐次确认)"
+            android:textSize="11.5sp"
+            android:textColor="#E6EDF3"
+            android:checked="true"
+            android:layout_marginBottom="14dp" />
+
+        <!-- 5. Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <TextView
+                android:id="@+id/btn_dialog_cancel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="取消"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/btn_dialog_save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="保存配置"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/btn_dialog_save_and_run"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="保存并启动 Pigo"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
