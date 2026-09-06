@@ -61,6 +61,12 @@ public class I18n {
         DIALOG_KEY_API_KEY,
         DIALOG_KEY_URL,
         DIALOG_KEY_MODEL,
+        BTN_FETCH_MODELS,
+        DIALOG_SELECT_MODEL,
+        TOAST_FETCHING_MODELS,
+        TOAST_FETCH_MODELS_SUCCESS,
+        TOAST_FETCH_MODELS_FAIL,
+        TOAST_ENTER_URL_FIRST,
         DIALOG_KEY_SAVE,
         DIALOG_KEY_CANCEL,
         TOAST_KEY_SAVED,
@@ -108,17 +114,23 @@ public class I18n {
         zh.put(Key.BTN_CLEAR, "清空");
         zh.put(Key.BTN_COPY, "复制");
         zh.put(Key.BTN_EXEC, "执行");
-        zh.put(Key.BTN_AGENT, "🤖 AI 助手");
+        zh.put(Key.BTN_AGENT, "🤖 Aider AI");
         zh.put(Key.BTN_CONFIG_KEY, "🔑 配置密钥");
-        zh.put(Key.DIALOG_KEY_TITLE, "配置 AI Agent 密钥");
-        zh.put(Key.DIALOG_KEY_DESC, "设置内置 /usr/local/bin/aichat 代理的 API 密钥及提供商配置");
+        zh.put(Key.DIALOG_KEY_TITLE, "配置 Aider AI 密钥");
+        zh.put(Key.DIALOG_KEY_DESC, "设置 Aider AI 编程助手（开源）的 API 密钥及提供商配置");
         zh.put(Key.DIALOG_KEY_PROVIDER, "提供商 (Provider):");
         zh.put(Key.DIALOG_KEY_API_KEY, "API Key (密钥):");
         zh.put(Key.DIALOG_KEY_URL, "Base URL (可选, 留空使用默认):");
         zh.put(Key.DIALOG_KEY_MODEL, "默认模型 (Model):");
+        zh.put(Key.BTN_FETCH_MODELS, "拉取模型");
+        zh.put(Key.DIALOG_SELECT_MODEL, "选择可用模型");
+        zh.put(Key.TOAST_FETCHING_MODELS, "正在拉取可用模型列表...");
+        zh.put(Key.TOAST_FETCH_MODELS_SUCCESS, "成功获取 %d 个模型，请选择");
+        zh.put(Key.TOAST_FETCH_MODELS_FAIL, "获取模型列表失败");
+        zh.put(Key.TOAST_ENTER_URL_FIRST, "请先输入 Base URL");
         zh.put(Key.DIALOG_KEY_SAVE, "保存配置");
         zh.put(Key.DIALOG_KEY_CANCEL, "取消");
-        zh.put(Key.TOAST_KEY_SAVED, "AI 密钥及配置文件已保存！");
+        zh.put(Key.TOAST_KEY_SAVED, "Aider 密钥及配置文件已保存！");
         zh.put(Key.SECTION_CONTROL, "控制面板");
         zh.put(Key.SECTION_TERMINAL, "终端输出");
         zh.put(Key.HINT_CUSTOM_CMD, "输入 Linux 命令, 如: uname -a, id, ls -la / ...");
@@ -156,17 +168,23 @@ public class I18n {
         en.put(Key.BTN_CLEAR, "Clear");
         en.put(Key.BTN_COPY, "Copy");
         en.put(Key.BTN_EXEC, "Run");
-        en.put(Key.BTN_AGENT, "🤖 AI Agent");
+        en.put(Key.BTN_AGENT, "🤖 Aider AI");
         en.put(Key.BTN_CONFIG_KEY, "🔑 AI Key");
-        en.put(Key.DIALOG_KEY_TITLE, "Configure AI Agent Key");
-        en.put(Key.DIALOG_KEY_DESC, "Set API Key and model provider for built-in /usr/local/bin/aichat");
+        en.put(Key.DIALOG_KEY_TITLE, "Configure Aider AI Key");
+        en.put(Key.DIALOG_KEY_DESC, "Set API Key and model provider for Aider AI Pair Programmer");
         en.put(Key.DIALOG_KEY_PROVIDER, "Provider:");
         en.put(Key.DIALOG_KEY_API_KEY, "API Key:");
         en.put(Key.DIALOG_KEY_URL, "Base URL (Optional):");
         en.put(Key.DIALOG_KEY_MODEL, "Default Model:");
+        en.put(Key.BTN_FETCH_MODELS, "Fetch Models");
+        en.put(Key.DIALOG_SELECT_MODEL, "Select Available Model");
+        en.put(Key.TOAST_FETCHING_MODELS, "Fetching available models from endpoint...");
+        en.put(Key.TOAST_FETCH_MODELS_SUCCESS, "Found %d models. Select one to fill");
+        en.put(Key.TOAST_FETCH_MODELS_FAIL, "Failed to fetch models from API");
+        en.put(Key.TOAST_ENTER_URL_FIRST, "Please enter API Base URL first");
         en.put(Key.DIALOG_KEY_SAVE, "Save Config");
         en.put(Key.DIALOG_KEY_CANCEL, "Cancel");
-        en.put(Key.TOAST_KEY_SAVED, "AI Key and configuration saved!");
+        en.put(Key.TOAST_KEY_SAVED, "Aider configuration saved!");
         en.put(Key.SECTION_CONTROL, "CONTROL PANEL");
         en.put(Key.SECTION_TERMINAL, "TERMINAL CONSOLE");
         en.put(Key.HINT_CUSTOM_CMD, "Enter Linux command, e.g.: uname -a, id, ls -la / ...");
@@ -204,17 +222,23 @@ public class I18n {
         ja.put(Key.BTN_CLEAR, "消去");
         ja.put(Key.BTN_COPY, "コピー");
         ja.put(Key.BTN_EXEC, "実行");
-        ja.put(Key.BTN_AGENT, "🤖 AI アシスタント");
+        ja.put(Key.BTN_AGENT, "🤖 Aider AI");
         ja.put(Key.BTN_CONFIG_KEY, "🔑 キー設定");
-        ja.put(Key.DIALOG_KEY_TITLE, "AI Agent APIキー設定");
-        ja.put(Key.DIALOG_KEY_DESC, "内蔵 /usr/local/bin/aichat エージェントのプロバイダーとAPIキーを設定");
+        ja.put(Key.DIALOG_KEY_TITLE, "Aider AI APIキー設定");
+        ja.put(Key.DIALOG_KEY_DESC, "Aider AI ペアプログラミングエージェントのプロバイダーとAPIキーを設定");
         ja.put(Key.DIALOG_KEY_PROVIDER, "プロバイダー:");
         ja.put(Key.DIALOG_KEY_API_KEY, "APIキー:");
         ja.put(Key.DIALOG_KEY_URL, "ベースURL (省略可能):");
         ja.put(Key.DIALOG_KEY_MODEL, "デフォルトモデル:");
+        ja.put(Key.BTN_FETCH_MODELS, "モデル取得");
+        ja.put(Key.DIALOG_SELECT_MODEL, "利用可能なモデルを選択");
+        ja.put(Key.TOAST_FETCHING_MODELS, "モデル一覧を取得中...");
+        ja.put(Key.TOAST_FETCH_MODELS_SUCCESS, "%d 件のモデルを取得しました");
+        ja.put(Key.TOAST_FETCH_MODELS_FAIL, "モデル一覧の取得に失敗しました");
+        ja.put(Key.TOAST_ENTER_URL_FIRST, "先に Base URL を入力してください");
         ja.put(Key.DIALOG_KEY_SAVE, "保存");
         ja.put(Key.DIALOG_KEY_CANCEL, "キャンセル");
-        ja.put(Key.TOAST_KEY_SAVED, "APIキーと設定を保存しました！");
+        ja.put(Key.TOAST_KEY_SAVED, "Aider の設定を保存しました！");
         ja.put(Key.SECTION_CONTROL, "コントロールパネル");
         ja.put(Key.SECTION_TERMINAL, "ターミナルコンソール");
         ja.put(Key.HINT_CUSTOM_CMD, "Linuxコマンドを入力 (例: uname -a, id, ls -la / ...)");

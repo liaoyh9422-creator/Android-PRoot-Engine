@@ -127,7 +127,7 @@ public class PRootEngine {
         env.put("TMPDIR", "/tmp");
         env.put("HOME", "/root");
         env.put("USER", "root");
-        env.put("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/system/bin");
+        env.put("PATH", "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/system/bin");
         env.put("GODEBUG", "netdns=go");
         env.put("SSL_CERT_FILE", "/etc/ssl/certs/ca-certificates.crt");
         env.put("SSL_CERT_DIR", "/etc/ssl/certs");
@@ -311,6 +311,8 @@ public class PRootEngine {
             // Ensure critical permissions
             File bb = new File(rootfsDir, "bin/busybox");
             if (bb.exists()) bb.setExecutable(true, false);
+            File aider = new File(rootfsDir, "usr/local/bin/aider");
+            if (aider.exists()) aider.setExecutable(true, false);
             File aichat = new File(rootfsDir, "usr/local/bin/aichat");
             if (aichat.exists()) aichat.setExecutable(true, false);
             File apkBin = new File(rootfsDir, "sbin/apk");
