@@ -289,7 +289,7 @@ public class PRootEngine {
      */
     private boolean setupAlpineRootfs() {
         File busybox = new File(rootfsDir, "bin/busybox");
-        File marker = new File(rootfsDir, ".alpine_done_v6");
+        File marker = new File(rootfsDir, ".alpine_done_v7");
 
         if (busybox.exists() && marker.exists()) {
             return true;

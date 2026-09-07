@@ -1,23 +1,30 @@
 package com.android.proot.sample;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.text.InputType;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.CheckBox;
@@ -106,7 +113,9 @@ public class MainActivity extends Activity {
     private TextView btnClear;
     private TerminalView terminalView;
     private int terminalFontSize = 12;
-    private boolean isFullScreen = false;
+    private boolean isFullScreen = true;
+    private static final int REQUEST_CODE_STORAGE_PERMS = 1001;
+    private static final int REQUEST_CODE_MANAGE_STORAGE = 1002;
 
     // Keybar Buttons
     private TextView keyEsc;
@@ -192,6 +201,17 @@ public class MainActivity extends Activity {
 
         // 8. Initial Localization Render
         updateUiTexts();
+
+        // 9. Apply Default Fullscreen (Immersive Status Bar, no top line)
+        applyFullScreen(true);
+
+        // 10. Request Storage Permissions (Non-blocking)
+        requestStoragePermissionIfNeeded();
+
+        // 11. Auto-initialize PRoot Engine & Launch Interactive Shell
+        if (currentState == State.UNINITIALIZED) {
+            initEngine();
+        }
     }
 
     private void bindViews() {
@@ -637,7 +657,7 @@ public class MainActivity extends Activity {
     }
 
     // ==========================================
-    // Fullscreen Mode Handling (Immersive Sticky)
+    // Fullscreen Mode Handling (Status Bar Immersive)
     // ==========================================
 
     private void toggleFullScreen() {
@@ -646,35 +666,57 @@ public class MainActivity extends Activity {
     }
 
     private void applyFullScreen(boolean fullScreen) {
-        View decorView = getWindow().getDecorView();
+        UiTheme.setupImmersiveStatusBar(this);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
         if (fullScreen) {
             cardHeader.setVisibility(View.GONE);
             cardActions.setVisibility(View.GONE);
+
             if (rootLayout != null) {
-                rootLayout.setFitsSystemWindows(false);
+                rootLayout.setFitsSystemWindows(true);
                 rootLayout.setPadding(0, 0, 0, 0);
             }
 
-            int flags = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    | View.SYSTEM_UI_FLAG_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
-            decorView.setSystemUiVisibility(flags);
+            if (cardTerminal != null) {
+                ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) cardTerminal.getLayoutParams();
+                if (lp != null) {
+                    lp.topMargin = 0;
+                    cardTerminal.setLayoutParams(lp);
+                }
+                cardTerminal.setBackgroundColor(Color.parseColor(UiTheme.C_BG));
+                cardTerminal.setPadding(UiTheme.dp(this, 8), UiTheme.dp(this, 4), UiTheme.dp(this, 8), UiTheme.dp(this, 4));
+            }
+
+            if (frameTerminal != null) {
+                frameTerminal.setBackgroundColor(Color.parseColor(UiTheme.C_BG));
+            }
 
             btnFullscreen.setText(I18n.get(I18n.Key.BTN_EXIT_FULLSCREEN));
             styleCapsule(btnFullscreen, UiTheme.C_YELLOW, UiTheme.C_YELLOW_BG, UiTheme.C_YELLOW);
         } else {
             cardHeader.setVisibility(View.VISIBLE);
             cardActions.setVisibility(View.VISIBLE);
+
+            int pad12 = UiTheme.dp(this, 12);
             if (rootLayout != null) {
                 rootLayout.setFitsSystemWindows(true);
-                int pad = UiTheme.dp(this, 12);
-                rootLayout.setPadding(pad, pad, pad, pad);
+                rootLayout.setPadding(pad12, pad12, pad12, pad12);
             }
 
-            decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+            if (cardTerminal != null) {
+                ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) cardTerminal.getLayoutParams();
+                if (lp != null) {
+                    lp.topMargin = UiTheme.dp(this, 8);
+                    cardTerminal.setLayoutParams(lp);
+                }
+                cardTerminal.setBackground(UiTheme.roundRect(this, UiTheme.C_SURFACE, UiTheme.C_BORDER, 1, 8));
+                cardTerminal.setPadding(pad12, pad12, pad12, pad12);
+            }
+
+            if (frameTerminal != null) {
+                frameTerminal.setBackground(UiTheme.roundRect(this, UiTheme.C_BG, UiTheme.C_BORDER_SUB, 1, 6));
+            }
 
             btnFullscreen.setText(I18n.get(I18n.Key.BTN_FULLSCREEN));
             styleCapsule(btnFullscreen, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
@@ -684,8 +726,11 @@ public class MainActivity extends Activity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus && isFullScreen) {
-            applyFullScreen(true);
+        if (hasFocus) {
+            UiTheme.setupImmersiveStatusBar(this);
+            if (isFullScreen) {
+                applyFullScreen(true);
+            }
         }
     }
 
@@ -696,6 +741,91 @@ public class MainActivity extends Activity {
             return;
         }
         super.onBackPressed();
+    }
+
+    // ==========================================
+    // Storage Permission Handling
+    // ==========================================
+
+    private boolean checkStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    private void requestStoragePermissionIfNeeded() {
+        if (checkStoragePermission()) {
+            return;
+        }
+
+        SharedPreferences sp = getSharedPreferences("proot_permissions", Context.MODE_PRIVATE);
+        boolean askedBefore = sp.getBoolean("storage_asked", false);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!askedBefore) {
+                sp.edit().putBoolean("storage_asked", true).apply();
+                new AlertDialog.Builder(this)
+                        .setTitle("存储访问权限")
+                        .setMessage("为使 PRoot 虚拟化环境能够访问手机外部存储（/sdcard），建议授予“所有文件访问权限”。\n\n即使暂不授予，内置 Linux 终端环境仍可完全正常使用。")
+                        .setPositiveButton("前往授权", (dialog, which) -> {
+                            try {
+                                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                                intent.setData(Uri.parse("package:" + getPackageName()));
+                                startActivityForResult(intent, REQUEST_CODE_MANAGE_STORAGE);
+                            } catch (Exception e1) {
+                                try {
+                                    Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                                    startActivityForResult(intent, REQUEST_CODE_MANAGE_STORAGE);
+                                } catch (Exception e2) {
+                                    try {
+                                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                        intent.setData(Uri.parse("package:" + getPackageName()));
+                                        startActivity(intent);
+                                    } catch (Exception ignored) {}
+                                }
+                            }
+                        })
+                        .setNegativeButton("稍后再说", null)
+                        .show();
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!askedBefore) {
+                sp.edit().putBoolean("storage_asked", true).apply();
+                requestPermissions(new String[]{
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                }, REQUEST_CODE_STORAGE_PERMS);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CODE_STORAGE_PERMS) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "存储权限已授予", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "存储权限未授予，/sdcard 访问受限", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_MANAGE_STORAGE) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Environment.isExternalStorageManager()) {
+                    Toast.makeText(this, "所有文件访问权限已授予", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "所有文件访问权限未授予，/sdcard 访问受限", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
     }
 
     // ==========================================
