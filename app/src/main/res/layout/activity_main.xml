@@ -159,6 +159,14 @@
                 android:textColor="#8B949E" />
 
             <TextView
+                android:id="@+id/btn_sessions_ctrl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📋 会话"
+                android:textSize="11sp"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
                 android:id="@+id/btn_ai_config"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -273,6 +281,13 @@
                 android:layout_width="0dp"
                 android:layout_height="1dp"
                 android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/btn_sessions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:text="📋 会话" />
 
             <TextView
                 android:id="@+id/btn_fullscreen"

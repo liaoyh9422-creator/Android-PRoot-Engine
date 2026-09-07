@@ -76,7 +76,22 @@ public class I18n {
         TOAST_CONFIG_SAVED,
         TOAST_FETCHING_MODELS,
         TOAST_FETCH_SUCCESS,
-        TOAST_FETCH_FAIL
+        TOAST_FETCH_FAIL,
+        BTN_SESSIONS,
+        TITLE_SESSIONS,
+        SESSIONS_EMPTY,
+        SESSIONS_EMPTY_DESC,
+        BTN_RESUME,
+        BTN_DELETE,
+        CONFIRM_DELETE_TITLE,
+        CONFIRM_DELETE_SESSION,
+        BTN_RESUME_RECENT,
+        BTN_NEW_SESSION,
+        BTN_REFRESH,
+        BTN_CANCEL,
+        TOAST_SESSION_DELETED,
+        TOAST_SESSION_RESUMED,
+        BADGE_TOTAL_SESSIONS
     }
 
     private static final Map<Language, Map<Key, String>> STRINGS = new HashMap<>();
@@ -129,6 +144,21 @@ public class I18n {
         zh.put(Key.TOAST_FETCHING_MODELS, "正在向端点获取可用模型列表...");
         zh.put(Key.TOAST_FETCH_SUCCESS, "成功获取 %d 个可用模型");
         zh.put(Key.TOAST_FETCH_FAIL, "获取模型失败: %s");
+        zh.put(Key.BTN_SESSIONS, "📋 会话");
+        zh.put(Key.TITLE_SESSIONS, "Pigo 会话管理");
+        zh.put(Key.SESSIONS_EMPTY, "暂无历史会话记录");
+        zh.put(Key.SESSIONS_EMPTY_DESC, "点击上方“+ 新建会话”或在终端运行 pigo 即可开始");
+        zh.put(Key.BTN_RESUME, "▶ 恢复");
+        zh.put(Key.BTN_DELETE, "🗑 删除");
+        zh.put(Key.CONFIRM_DELETE_TITLE, "删除会话");
+        zh.put(Key.CONFIRM_DELETE_SESSION, "确定要删除此会话记录吗？\nID: %s\n此操作无法恢复。");
+        zh.put(Key.BTN_RESUME_RECENT, "▶ 继续最近");
+        zh.put(Key.BTN_NEW_SESSION, "+ 新建会话");
+        zh.put(Key.BTN_REFRESH, "🔄 刷新");
+        zh.put(Key.BTN_CANCEL, "取消");
+        zh.put(Key.TOAST_SESSION_DELETED, "会话已删除");
+        zh.put(Key.TOAST_SESSION_RESUMED, "正在恢复会话: %s");
+        zh.put(Key.BADGE_TOTAL_SESSIONS, "%d 个会话");
         STRINGS.put(Language.ZH_CN, zh);
 
         // --- 2. English (EN) ---
@@ -174,6 +204,21 @@ public class I18n {
         en.put(Key.TOAST_FETCHING_MODELS, "Fetching available models from endpoint...");
         en.put(Key.TOAST_FETCH_SUCCESS, "Fetched %d available models");
         en.put(Key.TOAST_FETCH_FAIL, "Failed to fetch models: %s");
+        en.put(Key.BTN_SESSIONS, "📋 Sessions");
+        en.put(Key.TITLE_SESSIONS, "Pigo Sessions");
+        en.put(Key.SESSIONS_EMPTY, "No session history found");
+        en.put(Key.SESSIONS_EMPTY_DESC, "Click '+ New Session' or run pigo in terminal to start");
+        en.put(Key.BTN_RESUME, "▶ Resume");
+        en.put(Key.BTN_DELETE, "🗑 Delete");
+        en.put(Key.CONFIRM_DELETE_TITLE, "Delete Session");
+        en.put(Key.CONFIRM_DELETE_SESSION, "Are you sure you want to delete this session?\nID: %s\nThis cannot be undone.");
+        en.put(Key.BTN_RESUME_RECENT, "▶ Continue Latest");
+        en.put(Key.BTN_NEW_SESSION, "+ New Session");
+        en.put(Key.BTN_REFRESH, "🔄 Refresh");
+        en.put(Key.BTN_CANCEL, "Cancel");
+        en.put(Key.TOAST_SESSION_DELETED, "Session deleted");
+        en.put(Key.TOAST_SESSION_RESUMED, "Resuming session: %s");
+        en.put(Key.BADGE_TOTAL_SESSIONS, "%d sessions");
         STRINGS.put(Language.EN, en);
 
         // --- 3. 日本語 (JA) ---
@@ -219,6 +264,21 @@ public class I18n {
         ja.put(Key.TOAST_FETCHING_MODELS, "モデル一覧を取得中...");
         ja.put(Key.TOAST_FETCH_SUCCESS, "%d 個のモデルを取得しました");
         ja.put(Key.TOAST_FETCH_FAIL, "モデル取得失敗: %s");
+        ja.put(Key.BTN_SESSIONS, "📋 セッション");
+        ja.put(Key.TITLE_SESSIONS, "Pigo セッション管理");
+        ja.put(Key.SESSIONS_EMPTY, "履歴セッションはありません");
+        ja.put(Key.SESSIONS_EMPTY_DESC, "「+ 新規セッション」をクリックするかターミナルで pigo を実行");
+        ja.put(Key.BTN_RESUME, "▶ 再開");
+        ja.put(Key.BTN_DELETE, "🗑 削除");
+        ja.put(Key.CONFIRM_DELETE_TITLE, "セッションの削除");
+        ja.put(Key.CONFIRM_DELETE_SESSION, "このセッションを削除してもよろしいですか？\nID: %s\n元に戻すことはできません。");
+        ja.put(Key.BTN_RESUME_RECENT, "▶ 最新を再開");
+        ja.put(Key.BTN_NEW_SESSION, "+ 新規セッション");
+        ja.put(Key.BTN_REFRESH, "🔄 更新");
+        ja.put(Key.BTN_CANCEL, "キャンセル");
+        ja.put(Key.TOAST_SESSION_DELETED, "セッションを削除しました");
+        ja.put(Key.TOAST_SESSION_RESUMED, "セッションを再開中: %s");
+        ja.put(Key.BADGE_TOTAL_SESSIONS, "%d 件のセッション");
         STRINGS.put(Language.JA, ja);
     }
 

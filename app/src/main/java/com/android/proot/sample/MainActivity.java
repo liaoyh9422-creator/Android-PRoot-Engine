@@ -45,14 +45,20 @@ import com.termux.view.TerminalView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -95,6 +101,7 @@ public class MainActivity extends Activity {
 
     // Control Actions
     private TextView tvSectionControl;
+    private TextView btnSessionsCtrl;
     private TextView btnAiConfig;
     private TextView btnInit;
     private TextView btnRunUname;
@@ -106,6 +113,7 @@ public class MainActivity extends Activity {
     // Terminal Console & Keybar
     private TextView tvSectionTerminal;
     private TextView badgeLineCount;
+    private TextView btnSessions;
     private TextView btnFullscreen;
     private TextView btnFontMinus;
     private TextView btnFontPlus;
@@ -235,6 +243,7 @@ public class MainActivity extends Activity {
         btnLangJa = findViewById(R.id.btn_lang_ja);
 
         tvSectionControl = findViewById(R.id.tv_section_control);
+        btnSessionsCtrl = findViewById(R.id.btn_sessions_ctrl);
         btnAiConfig = findViewById(R.id.btn_ai_config);
         btnInit = findViewById(R.id.btn_init);
         btnRunUname = findViewById(R.id.btn_run_uname);
@@ -245,6 +254,7 @@ public class MainActivity extends Activity {
 
         tvSectionTerminal = findViewById(R.id.tv_section_terminal);
         badgeLineCount = findViewById(R.id.badge_line_count);
+        btnSessions = findViewById(R.id.btn_sessions);
         btnFullscreen = findViewById(R.id.btn_fullscreen);
         btnFontMinus = findViewById(R.id.btn_font_minus);
         btnFontPlus = findViewById(R.id.btn_font_plus);
@@ -284,6 +294,7 @@ public class MainActivity extends Activity {
         styleBadge(badgeLineCount, UiTheme.C_DIM, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB);
 
         // Action Micro-capsules
+        styleCapsule(btnSessionsCtrl, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
         styleCapsule(btnAiConfig, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
         styleCapsule(btnInit, UiTheme.C_BLUE, UiTheme.C_BLUE_BG, UiTheme.C_BLUE);
         styleCapsule(btnRunUname, UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN);
@@ -292,6 +303,7 @@ public class MainActivity extends Activity {
         styleCapsule(btnExec, UiTheme.C_GREEN, UiTheme.C_GREEN_BG, UiTheme.C_GREEN);
 
         // Terminal Top Action Buttons
+        styleCapsule(btnSessions, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
         styleCapsule(btnFullscreen, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
         styleCapsule(btnFontMinus, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
         styleCapsule(btnFontPlus, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
@@ -381,6 +393,7 @@ public class MainActivity extends Activity {
         btnLangJa.setOnClickListener(v -> switchLanguage(I18n.Language.JA));
 
         // Preset Actions
+        btnSessionsCtrl.setOnClickListener(v -> showPigoSessionsDialog());
         btnAiConfig.setOnClickListener(v -> showAiConfigDialog());
         btnInit.setOnClickListener(v -> initEngine());
         btnRunUname.setOnClickListener(v -> runTerminalSession(getDefaultShell(), "-c", "uname -a"));
@@ -398,6 +411,7 @@ public class MainActivity extends Activity {
         });
 
         // Fullscreen and Font scaling
+        btnSessions.setOnClickListener(v -> showPigoSessionsDialog());
         btnFullscreen.setOnClickListener(v -> toggleFullScreen());
         btnFontPlus.setOnClickListener(v -> {
             terminalFontSize = Math.min(terminalFontSize + 1, 32);
@@ -463,7 +477,9 @@ public class MainActivity extends Activity {
         tvSectionControl.setText(I18n.get(I18n.Key.SECTION_CONTROL));
         tvSectionTerminal.setText(I18n.get(I18n.Key.SECTION_TERMINAL));
 
+        btnSessionsCtrl.setText(I18n.get(I18n.Key.BTN_SESSIONS));
         btnAiConfig.setText(I18n.get(I18n.Key.BTN_AI_CONFIG));
+        btnSessions.setText(I18n.get(I18n.Key.BTN_SESSIONS));
         btnFullscreen.setText(isFullScreen ? I18n.get(I18n.Key.BTN_EXIT_FULLSCREEN) : I18n.get(I18n.Key.BTN_FULLSCREEN));
         btnInit.setText(I18n.get(I18n.Key.BTN_INIT));
         btnRunUname.setText(I18n.get(I18n.Key.BTN_RUN_UNAME));
@@ -955,12 +971,330 @@ public class MainActivity extends Activity {
     }
 
     private void launchPigoSession() {
+        startNewPigoSession();
+    }
+
+    private void startNewPigoSession() {
         if (currentSession != null && currentSession.isRunning()) {
             terminalBridge.sendString(currentSession, "pigo\n");
             Toast.makeText(this, "已在当前终端启动 pigo", Toast.LENGTH_SHORT).show();
         } else {
             runTerminalSession("/usr/local/bin/pigo");
         }
+    }
+
+    private void continueRecentPigoSession() {
+        if (currentSession != null && currentSession.isRunning()) {
+            terminalBridge.sendString(currentSession, "pigo -c\n");
+            Toast.makeText(this, "正在恢复最近的 Pigo 会话", Toast.LENGTH_SHORT).show();
+        } else {
+            runTerminalSession("/usr/local/bin/pigo", "-c");
+        }
+    }
+
+    private void resumePigoSession(String sessionId) {
+        String cmd = "pigo -r " + sessionId + "\n";
+        if (currentSession != null && currentSession.isRunning()) {
+            terminalBridge.sendString(currentSession, cmd);
+            Toast.makeText(this, String.format(I18n.get(I18n.Key.TOAST_SESSION_RESUMED), sessionId), Toast.LENGTH_SHORT).show();
+        } else {
+            runTerminalSession("/usr/local/bin/pigo", "-r", sessionId);
+        }
+    }
+
+    // ==========================================
+    // Pigo Session Management Dialog & Logic
+    // ==========================================
+
+    public static class PigoSession {
+        public final String id;
+        public final String model;
+        public final String cwd;
+        public final String title;
+        public final long lastModified;
+        public final long fileSize;
+        public final File file;
+
+        public PigoSession(String id, String model, String cwd, String title, long lastModified, long fileSize, File file) {
+            this.id = id;
+            this.model = model;
+            this.cwd = cwd;
+            this.title = title;
+            this.lastModified = lastModified;
+            this.fileSize = fileSize;
+            this.file = file;
+        }
+    }
+
+    private void showPigoSessionsDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_pigo_sessions, null);
+        builder.setView(dialogView);
+        AlertDialog dialog = builder.create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        TextView tvTitle = dialogView.findViewById(R.id.tv_dialog_title);
+        TextView badgeCount = dialogView.findViewById(R.id.badge_sessions_count);
+        TextView btnClose = dialogView.findViewById(R.id.btn_dialog_close);
+        TextView btnNewSession = dialogView.findViewById(R.id.btn_new_session);
+        TextView btnResumeRecent = dialogView.findViewById(R.id.btn_resume_recent);
+        TextView btnRefresh = dialogView.findViewById(R.id.btn_refresh_sessions);
+        LinearLayout layoutSessionsList = dialogView.findViewById(R.id.layout_sessions_list);
+        LinearLayout layoutEmptyState = dialogView.findViewById(R.id.layout_empty_state);
+        TextView tvEmptyTitle = dialogView.findViewById(R.id.tv_empty_title);
+        TextView tvEmptyDesc = dialogView.findViewById(R.id.tv_empty_desc);
+
+        // Styling dialog container and buttons
+        dialogView.findViewById(R.id.dialog_container).setBackground(UiTheme.roundRect(this, UiTheme.C_SURFACE, UiTheme.C_BORDER, 1, 10));
+        styleBadge(badgeCount, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
+        styleCapsule(btnNewSession, UiTheme.C_GREEN, UiTheme.C_GREEN_BG, UiTheme.C_GREEN);
+        styleCapsule(btnResumeRecent, UiTheme.C_BLUE, UiTheme.C_BLUE_BG, UiTheme.C_BLUE);
+        styleCapsule(btnRefresh, UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
+
+        tvTitle.setText(I18n.get(I18n.Key.TITLE_SESSIONS));
+        btnNewSession.setText(I18n.get(I18n.Key.BTN_NEW_SESSION));
+        btnResumeRecent.setText(I18n.get(I18n.Key.BTN_RESUME_RECENT));
+        btnRefresh.setText(I18n.get(I18n.Key.BTN_REFRESH));
+        tvEmptyTitle.setText(I18n.get(I18n.Key.SESSIONS_EMPTY));
+        tvEmptyDesc.setText(I18n.get(I18n.Key.SESSIONS_EMPTY_DESC));
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+
+        btnNewSession.setOnClickListener(v -> {
+            dialog.dismiss();
+            startNewPigoSession();
+        });
+
+        btnResumeRecent.setOnClickListener(v -> {
+            dialog.dismiss();
+            continueRecentPigoSession();
+        });
+
+        btnRefresh.setOnClickListener(v -> {
+            populateSessionsList(dialog, layoutSessionsList, layoutEmptyState, badgeCount);
+        });
+
+        populateSessionsList(dialog, layoutSessionsList, layoutEmptyState, badgeCount);
+
+        dialog.show();
+    }
+
+    private void populateSessionsList(AlertDialog dialog, LinearLayout container, LinearLayout emptyState, TextView badgeCount) {
+        List<PigoSession> sessions = loadPigoSessions();
+        badgeCount.setText(String.format(I18n.get(I18n.Key.BADGE_TOTAL_SESSIONS), sessions.size()));
+
+        // Keep emptyState view at index 0, remove previous item cards
+        if (container.getChildCount() > 1) {
+            container.removeViews(1, container.getChildCount() - 1);
+        }
+
+        if (sessions.isEmpty()) {
+            emptyState.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        emptyState.setVisibility(View.GONE);
+
+        for (PigoSession session : sessions) {
+            View itemView = getLayoutInflater().inflate(R.layout.item_pigo_session, container, false);
+
+            itemView.setBackground(UiTheme.roundRect(this, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER, 1, 6));
+
+            TextView tvTime = itemView.findViewById(R.id.tv_session_time);
+            TextView badgeModel = itemView.findViewById(R.id.badge_session_model);
+            TextView badgeSize = itemView.findViewById(R.id.badge_session_size);
+            TextView tvPreview = itemView.findViewById(R.id.tv_session_preview);
+            TextView tvId = itemView.findViewById(R.id.tv_session_id);
+            TextView tvCwd = itemView.findViewById(R.id.tv_session_cwd);
+            TextView btnResume = itemView.findViewById(R.id.btn_item_resume);
+            TextView btnDelete = itemView.findViewById(R.id.btn_item_delete);
+
+            styleBadge(badgeModel, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
+            styleBadge(badgeSize, UiTheme.C_DIM, UiTheme.C_SURFACE, UiTheme.C_BORDER_SUB);
+            styleCapsule(btnResume, UiTheme.C_BLUE, UiTheme.C_BLUE_BG, UiTheme.C_BLUE);
+            styleCapsule(btnDelete, UiTheme.C_RED, UiTheme.C_RED_BG, UiTheme.C_RED);
+
+            tvTime.setText(formatTime(session.lastModified));
+            badgeModel.setText(session.model != null && !session.model.isEmpty() ? session.model : "default");
+            badgeSize.setText(formatFileSize(session.fileSize));
+            tvPreview.setText(session.title);
+            tvId.setText("ID: " + session.id);
+            tvCwd.setText("📁 " + session.cwd);
+            btnResume.setText(I18n.get(I18n.Key.BTN_RESUME));
+            btnDelete.setText(I18n.get(I18n.Key.BTN_DELETE));
+
+            // Clicking card or clicking Resume button resumes this session
+            View.OnClickListener resumeListener = v -> {
+                dialog.dismiss();
+                resumePigoSession(session.id);
+            };
+            itemView.setOnClickListener(resumeListener);
+            btnResume.setOnClickListener(resumeListener);
+
+            // Delete session button
+            btnDelete.setOnClickListener(v -> {
+                new AlertDialog.Builder(this)
+                        .setTitle(I18n.get(I18n.Key.CONFIRM_DELETE_TITLE))
+                        .setMessage(String.format(I18n.get(I18n.Key.CONFIRM_DELETE_SESSION), session.id))
+                        .setPositiveButton(I18n.get(I18n.Key.BTN_DELETE), (d, which) -> {
+                            if (session.file != null && session.file.exists()) {
+                                boolean ok = session.file.delete();
+                                if (ok) {
+                                    Toast.makeText(this, I18n.get(I18n.Key.TOAST_SESSION_DELETED), Toast.LENGTH_SHORT).show();
+                                    populateSessionsList(dialog, container, emptyState, badgeCount);
+                                }
+                            }
+                        })
+                        .setNegativeButton(I18n.get(I18n.Key.BTN_CANCEL), null)
+                        .show();
+            });
+
+            container.addView(itemView);
+        }
+    }
+
+    private List<PigoSession> loadPigoSessions() {
+        File rootfs = engine != null ? engine.getRootfsDir() : null;
+        if (rootfs == null || !rootfs.exists()) {
+            return Collections.emptyList();
+        }
+
+        File sessionsDir = new File(rootfs, "root/.pigo/sessions");
+        if (!sessionsDir.exists() || !sessionsDir.isDirectory()) {
+            return Collections.emptyList();
+        }
+
+        File[] files = sessionsDir.listFiles((dir, name) -> name != null && name.endsWith(".jsonl"));
+        if (files == null || files.length == 0) {
+            return Collections.emptyList();
+        }
+
+        List<PigoSession> list = new ArrayList<>();
+        for (File f : files) {
+            try {
+                PigoSession s = parseSessionFile(f);
+                if (s != null) {
+                    list.add(s);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed parsing session file: " + f.getName(), e);
+            }
+        }
+
+        // Sort descending by last modified time (newest sessions first)
+        Collections.sort(list, (a, b) -> Long.compare(b.lastModified, a.lastModified));
+        return list;
+    }
+
+    private PigoSession parseSessionFile(File file) {
+        String fallbackId = file.getName().replace(".jsonl", "");
+        String id = fallbackId;
+        String model = "default";
+        String cwd = "/root";
+        String title = null;
+        long lastModified = file.lastModified();
+        long fileSize = file.length();
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line1 = reader.readLine();
+            if (line1 != null && !line1.trim().isEmpty()) {
+                try {
+                    JSONObject j1 = new JSONObject(line1);
+                    if (j1.has("id")) id = j1.getString("id");
+                    if (j1.has("model")) model = j1.getString("model");
+                    if (j1.has("cwd")) cwd = j1.getString("cwd");
+                    if (j1.has("title")) title = j1.getString("title");
+                } catch (Exception ignored) {}
+            }
+
+            // If title not yet found, look for first user message in subsequent lines (up to 15 lines)
+            String line;
+            int linesChecked = 0;
+            while ((line = reader.readLine()) != null && linesChecked < 15) {
+                linesChecked++;
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                try {
+                    JSONObject j = new JSONObject(line);
+                    String extracted = extractUserPrompt(j);
+                    if (extracted != null && !extracted.isEmpty()) {
+                        title = extracted;
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error reading session file: " + file.getName(), e);
+        }
+
+        if (title == null || title.trim().isEmpty()) {
+            title = "(无对话记录)";
+        } else {
+            title = title.replace("\r", " ").replace("\n", " ").trim();
+            if (title.length() > 100) {
+                title = title.substring(0, 97) + "...";
+            }
+        }
+
+        return new PigoSession(id, model, cwd, title, lastModified, fileSize, file);
+    }
+
+    private String extractUserPrompt(JSONObject j) {
+        if (j.has("message")) {
+            Object mObj = j.opt("message");
+            if (mObj instanceof JSONObject) {
+                JSONObject msg = (JSONObject) mObj;
+                String role = msg.optString("role", "");
+                if ("user".equalsIgnoreCase(role) || role.isEmpty()) {
+                    String c = extractContent(msg.opt("content"));
+                    if (c != null && !c.isEmpty()) return c;
+                }
+            }
+        }
+        if (j.has("role")) {
+            String role = j.optString("role", "");
+            if ("user".equalsIgnoreCase(role)) {
+                String c = extractContent(j.opt("content"));
+                if (c != null && !c.isEmpty()) return c;
+            }
+        }
+        if (j.has("prompt")) {
+            return j.optString("prompt");
+        }
+        return null;
+    }
+
+    private String extractContent(Object contentObj) {
+        if (contentObj == null) return null;
+        if (contentObj instanceof String) {
+            return (String) contentObj;
+        }
+        if (contentObj instanceof JSONArray) {
+            JSONArray arr = (JSONArray) contentObj;
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject item = arr.optJSONObject(i);
+                if (item != null) {
+                    String text = item.optString("text", "");
+                    if (!text.isEmpty()) return text;
+                }
+            }
+        }
+        return null;
+    }
+
+    private String formatFileSize(long bytes) {
+        if (bytes <= 0) return "0 B";
+        if (bytes < 1024) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(1024));
+        char pre = "KMGTPE".charAt(exp - 1);
+        return String.format(Locale.US, "%.1f %cB", bytes / Math.pow(1024, exp), pre);
+    }
+
+    private String formatTime(long timestamp) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+        return sdf.format(new Date(timestamp));
     }
 
     private void savePigoConfig(String baseUrl, String apiKey, String model, boolean approve) {

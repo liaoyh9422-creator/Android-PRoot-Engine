@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/card_session_item"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginBottom="8dp"
+    android:padding="10dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Row 1: Time, Model badge, Size badge -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tv_session_time"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="2026-09-07 14:22:02"
+            android:textSize="11sp"
+            android:textColor="#8B949E" />
+
+        <TextView
+            android:id="@+id/badge_session_model"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="deepseek-chat"
+            android:textSize="9.5sp"
+            android:typeface="monospace" />
+
+        <TextView
+            android:id="@+id/badge_session_size"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="4.2 KB"
+            android:textSize="9.5sp"
+            android:typeface="monospace" />
+    </LinearLayout>
+
+    <!-- Row 2: Prompt / Title Preview -->
+    <TextView
+        android:id="@+id/tv_session_preview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="请帮我分析当前项目的结构..."
+        android:textSize="12.5sp"
+        android:textColor="#E6EDF3"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+    <!-- Row 3: Session ID & CWD + Actions (Resume & Delete) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_session_id"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ID: 20260907-142202"
+                android:textSize="10sp"
+                android:typeface="monospace"
+                android:textColor="#58A6FF"
+                android:singleLine="true"
+                android:ellipsize="middle" />
+
+            <TextView
+                android:id="@+id/tv_session_cwd"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📁 /root"
+                android:textSize="10sp"
+                android:textColor="#8B949E"
+                android:layout_marginTop="1dp"
+                android:singleLine="true"
+                android:ellipsize="middle" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/btn_item_resume"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="▶ 恢复"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/btn_item_delete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="🗑 删除"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+</LinearLayout>
