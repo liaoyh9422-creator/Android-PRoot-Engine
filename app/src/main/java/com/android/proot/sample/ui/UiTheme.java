@@ -74,6 +74,19 @@ public class UiTheme {
         return btn;
     }
 
+    /** Apply micro-capsule styling to an existing TextView */
+    public static void styleCapsule(Context ctx, TextView btn, String textColor, String bgColor, String strokeColor) {
+        btn.setTextColor(Color.parseColor(textColor));
+        btn.setTextSize(11.5f);
+        btn.setTypeface(Typeface.DEFAULT_BOLD);
+        btn.setBackground(roundRect(ctx, bgColor, strokeColor, 1, 5));
+        btn.setPadding(dp(ctx, 10), dp(ctx, 6), dp(ctx, 10), dp(ctx, 6));
+        btn.setGravity(Gravity.CENTER);
+        btn.setClickable(true);
+        btn.setFocusable(true);
+        btn.setIncludeFontPadding(false);
+    }
+
     /** Create small status indicator dot */
     public static View createDot(Context ctx, String colorHex, int sizeDp) {
         View dot = new View(ctx);

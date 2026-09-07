@@ -40,6 +40,7 @@ import com.android.proot.PRootEngine;
 import com.android.proot.sample.terminal.TerminalBridge;
 import com.android.proot.sample.ui.UiTheme;
 import com.android.proot.proxy.CnbProxyServer;
+import com.android.proot.sample.ui.ProxyFloatingLogView;
 import com.android.proot.proxy.ProxyConfig;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
@@ -370,15 +371,7 @@ public class MainActivity extends Activity {
     }
 
     private void styleCapsule(TextView btn, String textColor, String bgColor, String strokeColor) {
-        btn.setTextColor(Color.parseColor(textColor));
-        btn.setTextSize(11.5f);
-        btn.setTypeface(Typeface.DEFAULT_BOLD);
-        btn.setBackground(UiTheme.roundRect(this, bgColor, strokeColor, 1, 5));
-        btn.setPadding(UiTheme.dp(this, 10), UiTheme.dp(this, 6), UiTheme.dp(this, 10), UiTheme.dp(this, 6));
-        btn.setGravity(Gravity.CENTER);
-        btn.setClickable(true);
-        btn.setFocusable(true);
-        btn.setIncludeFontPadding(false);
+        UiTheme.styleCapsule(this, btn, textColor, bgColor, strokeColor);
     }
 
     private void updateStatusDot(String colorHex) {
@@ -865,6 +858,7 @@ public class MainActivity extends Activity {
         TextView tvProxyStatus = dialogView.findViewById(R.id.tv_proxy_status);
         TextView btnPresetOpenRouter = dialogView.findViewById(R.id.btn_preset_openrouter);
         TextView btnPresetDeepSeek = dialogView.findViewById(R.id.btn_preset_deepseek);
+        TextView btnOpenFloatingLog = dialogView.findViewById(R.id.btn_open_floating_log);
         EditText etBaseUrl = dialogView.findViewById(R.id.et_pigo_base_url);
         EditText etApiKey = dialogView.findViewById(R.id.et_pigo_api_key);
         CheckBox cbShowKey = dialogView.findViewById(R.id.cb_show_key);
@@ -882,6 +876,13 @@ public class MainActivity extends Activity {
         btnPresetCnb.setText(I18n.get(I18n.Key.BTN_PRESET_CNB));
         styleCapsule(btnPresetOpenRouter, UiTheme.C_BLUE, UiTheme.C_BLUE_BG, UiTheme.C_BLUE);
         styleCapsule(btnPresetDeepSeek, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
+        styleCapsule(btnOpenFloatingLog, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
+        btnOpenFloatingLog.setText(I18n.get(I18n.Key.BTN_FLOATING_LOG));
+        btnOpenFloatingLog.setOnClickListener(v -> {
+            ProxyFloatingLogView.getInstance(this).showExpanded();
+            dialog.dismiss();
+        });
+        tvProxyStatus.setOnClickListener(v -> ProxyFloatingLogView.getInstance(this).showExpanded());
         styleCapsule(btnFetchModels, UiTheme.C_YELLOW, UiTheme.C_YELLOW_BG, UiTheme.C_YELLOW);
         styleCapsule(btnCancel, UiTheme.C_DIM, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER);
         styleCapsule(btnSave, UiTheme.C_BLUE, UiTheme.C_BLUE_BG, UiTheme.C_BLUE);
@@ -969,6 +970,7 @@ public class MainActivity extends Activity {
 
         // Preset buttons
         btnPresetCnb.setOnClickListener(v -> {
+            ProxyFloatingLogView.getInstance(this).showMiniCapsule();
             String baseUrl = CnbProxyServer.getInstance().getBaseUrl();
             etBaseUrl.setText(baseUrl);
             etModel.setText("deepseek-v4-flash");
@@ -1522,6 +1524,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         stopCurrentSession();
+        ProxyFloatingLogView.getInstance(this).destroy();
         CnbProxyServer.getInstance().stop();
         executor.shutdownNow();
     }

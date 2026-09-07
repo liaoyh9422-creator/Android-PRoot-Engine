@@ -94,6 +94,14 @@
                         android:layout_marginStart="6dp"
                         android:text="DeepSeek 官方"
                         android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/btn_open_floating_log"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="📜 悬浮日志"
+                        android:textSize="11sp" />
                 </LinearLayout>
             </HorizontalScrollView>
 

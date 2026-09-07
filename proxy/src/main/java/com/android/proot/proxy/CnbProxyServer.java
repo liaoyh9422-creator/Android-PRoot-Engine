@@ -4,6 +4,13 @@ import org.json.JSONArray;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -19,12 +26,15 @@ public final class CnbProxyServer {
     }
 
     public static final int DEFAULT_PORT = 7863;
+    private static final int MAX_LOG_BUFFER = 250;
     private static volatile CnbProxyServer sInstance;
 
     private EmbeddedProxyServer server;
     private ProxyConfig config;
-    private ProxyLogListener logListener;
     private StateListener stateListener;
+    private final List<ProxyLogListener> logListeners = new CopyOnWriteArrayList<>();
+    private final LinkedList<String> logBuffer = new LinkedList<>();
+    private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss", Locale.US);
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private volatile boolean starting;
 
@@ -42,7 +52,22 @@ public final class CnbProxyServer {
     private CnbProxyServer() {}
 
     public void setLogListener(ProxyLogListener listener) {
-        this.logListener = listener;
+        logListeners.clear();
+        if (listener != null) {
+            logListeners.add(listener);
+        }
+    }
+
+    public void addLogListener(ProxyLogListener listener) {
+        if (listener != null && !logListeners.contains(listener)) {
+            logListeners.add(listener);
+        }
+    }
+
+    public void removeLogListener(ProxyLogListener listener) {
+        if (listener != null) {
+            logListeners.remove(listener);
+        }
     }
 
     public void setStateListener(StateListener listener) {
@@ -72,15 +97,54 @@ public final class CnbProxyServer {
         return new JSONArray();
     }
 
+    public synchronized List<String> getRecentLogs() {
+        synchronized (logBuffer) {
+            return new ArrayList<>(logBuffer);
+        }
+    }
+
+    public void clearLogs() {
+        synchronized (logBuffer) {
+            logBuffer.clear();
+        }
+    }
+
+    public void logMessage(String tag, String message) {
+        dispatchLog(tag, message);
+    }
+
+    private void dispatchLog(String tag, String message) {
+        String timestamp;
+        synchronized (timeFormat) {
+            timestamp = timeFormat.format(new Date());
+        }
+        String entry = "[" + timestamp + "] [" + tag + "] " + message;
+        synchronized (logBuffer) {
+            logBuffer.add(entry);
+            if (logBuffer.size() > MAX_LOG_BUFFER) {
+                logBuffer.removeFirst();
+            }
+        }
+        for (ProxyLogListener l : logListeners) {
+            try {
+                l.onLog(tag, entry);
+            } catch (Exception ignored) {}
+        }
+    }
+
     public synchronized void startAsync(ProxyConfig baseConfig) {
         if (isRunning() || starting) return;
         starting = true;
+        dispatchLog("GATEWAY", "Initiating proxy start sequence...");
         if (stateListener != null) stateListener.onStarting();
 
         executor.execute(() -> {
             try {
                 int targetPort = baseConfig != null ? baseConfig.getPort() : DEFAULT_PORT;
                 int freePort = findFreePort(targetPort);
+                if (freePort != targetPort) {
+                    dispatchLog("GATEWAY", "Port " + targetPort + " in use; auto-migrated to free port " + freePort);
+                }
 
                 ProxyConfig.Builder builder = new ProxyConfig.Builder();
                 if (baseConfig != null) {
@@ -98,9 +162,7 @@ public final class CnbProxyServer {
 
                 synchronized (CnbProxyServer.this) {
                     this.config = cfg;
-                    this.server = new EmbeddedProxyServer(cfg, (tag, msg) -> {
-                        if (logListener != null) logListener.onLog(tag, msg);
-                    });
+                    this.server = new EmbeddedProxyServer(cfg, this::dispatchLog);
                 }
 
                 server.start();
@@ -109,6 +171,7 @@ public final class CnbProxyServer {
                     starting = false;
                 }
 
+                dispatchLog("GATEWAY", "Proxy successfully started at " + getBaseUrl());
                 if (stateListener != null) {
                     stateListener.onStarted(freePort, getBaseUrl());
                 }
@@ -120,6 +183,7 @@ public final class CnbProxyServer {
                         server = null;
                     }
                 }
+                dispatchLog("ERROR", "Proxy start failed: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
                 if (stateListener != null) {
                     stateListener.onError(e.getMessage() != null ? e.getMessage() : "Failed to start proxy", e);
                 }
@@ -132,6 +196,7 @@ public final class CnbProxyServer {
         if (server != null) {
             server.stop();
             server = null;
+            dispatchLog("GATEWAY", "Proxy server stopped");
         }
         if (stateListener != null) {
             stateListener.onStopped();

@@ -95,7 +95,11 @@ public class I18n {
         BTN_PRESET_CNB,
         STATUS_PROXY_RUNNING,
         STATUS_PROXY_STOPPED,
-        STATUS_PROXY_STARTING
+        STATUS_PROXY_STARTING,
+        BTN_FLOATING_LOG,
+        BTN_DIAGNOSTICS,
+        BTN_MINIMIZE,
+        BTN_CLEAR_LOGS
     }
 
     private static final Map<Language, Map<Key, String>> STRINGS = new HashMap<>();
@@ -167,6 +171,10 @@ public class I18n {
         zh.put(Key.STATUS_PROXY_RUNNING, "本地代理运行中: %s");
         zh.put(Key.STATUS_PROXY_STOPPED, "本地代理未启动");
         zh.put(Key.STATUS_PROXY_STARTING, "本地代理正在获取凭证启动...");
+        zh.put(Key.BTN_FLOATING_LOG, "📜 代理悬浮日志");
+        zh.put(Key.BTN_DIAGNOSTICS, "🩺 测活");
+        zh.put(Key.BTN_MINIMIZE, "─ 折叠");
+        zh.put(Key.BTN_CLEAR_LOGS, "🗑 清空");
         STRINGS.put(Language.ZH_CN, zh);
 
         // --- 2. English (EN) ---
@@ -231,6 +239,10 @@ public class I18n {
         en.put(Key.STATUS_PROXY_RUNNING, "Local Proxy Running: %s");
         en.put(Key.STATUS_PROXY_STOPPED, "Local Proxy Stopped");
         en.put(Key.STATUS_PROXY_STARTING, "Starting local proxy & acquiring tokens...");
+        en.put(Key.BTN_FLOATING_LOG, "📜 Floating Log");
+        en.put(Key.BTN_DIAGNOSTICS, "🩺 Test Live");
+        en.put(Key.BTN_MINIMIZE, "─ Minimize");
+        en.put(Key.BTN_CLEAR_LOGS, "🗑 Clear");
         STRINGS.put(Language.EN, en);
 
         // --- 3. 日本語 (JA) ---
@@ -295,6 +307,10 @@ public class I18n {
         ja.put(Key.STATUS_PROXY_RUNNING, "ローカルプロキシ稼働中: %s");
         ja.put(Key.STATUS_PROXY_STOPPED, "ローカルプロキシ停止中");
         ja.put(Key.STATUS_PROXY_STARTING, "ローカルプロキシ起動中 (トークン取得)...");
+        ja.put(Key.BTN_FLOATING_LOG, "📜 浮動ログ");
+        ja.put(Key.BTN_DIAGNOSTICS, "🩺 診断");
+        ja.put(Key.BTN_MINIMIZE, "─ 最小化");
+        ja.put(Key.BTN_CLEAR_LOGS, "🗑 消去");
         STRINGS.put(Language.JA, ja);
     }
 
