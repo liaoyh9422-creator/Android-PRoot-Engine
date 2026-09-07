@@ -51,6 +51,7 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.InputStream;
@@ -624,6 +625,25 @@ public class MainActivity extends Activity {
                     builder.addArg(cmdArgs[i]);
                 }
 
+                // Inject OpenAI / Pigo environment variables into PRoot environment
+                SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
+                String pigoBaseUrl = sp.getString("base_url", "").trim();
+                String pigoApiKey = sp.getString("api_key", "").trim();
+                if (pigoBaseUrl.isEmpty() && pigoApiKey.isEmpty()) {
+                    pigoBaseUrl = CnbProxyServer.getInstance().getBaseUrl();
+                    pigoApiKey = "cnb-free";
+                } else if (pigoApiKey.isEmpty() && (pigoBaseUrl.contains("127.0.0.1") || pigoBaseUrl.contains("localhost"))) {
+                    pigoApiKey = "cnb-free";
+                }
+                if (!pigoApiKey.isEmpty()) {
+                    builder.addEnv("OPENAI_API_KEY", pigoApiKey);
+                    builder.addEnv("OPENCODE_API_KEY", pigoApiKey);
+                }
+                if (!pigoBaseUrl.isEmpty()) {
+                    builder.addEnv("OPENAI_BASE_URL", pigoBaseUrl);
+                    builder.addEnv("OPENCODE_GO_BASE_URL", pigoBaseUrl);
+                }
+
                 PRootConfig config = builder.build();
                 List<String> cmd = engine.buildCommandLine(config);
                 Map<String, String> envMap = engine.buildEnvironment(config);
@@ -892,12 +912,20 @@ public class MainActivity extends Activity {
         etApiKey.setBackground(UiTheme.roundRect(this, UiTheme.C_BG, UiTheme.C_BORDER_SUB, 1, 6));
         etModel.setBackground(UiTheme.roundRect(this, UiTheme.C_BG, UiTheme.C_BORDER_SUB, 1, 6));
 
-        // Load saved values (Default empty, NEVER hardcode user credentials!)
+        // Load saved values (Default to CNB anonymous proxy if empty)
         SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
         String defUrl = sp.getString("base_url", "");
         String defKey = sp.getString("api_key", "");
         String defModel = sp.getString("model", "");
         boolean defApprove = sp.getBoolean("approve", true);
+
+        if (defUrl.isEmpty() && defKey.isEmpty() && defModel.isEmpty()) {
+            defUrl = CnbProxyServer.getInstance().getBaseUrl();
+            defKey = "cnb-free";
+            defModel = "deepseek-v4-flash";
+        } else if (defKey.isEmpty() && (defUrl.contains("127.0.0.1") || defUrl.contains("localhost"))) {
+            defKey = "cnb-free";
+        }
 
         etBaseUrl.setText(defUrl);
         etApiKey.setText(defKey);
@@ -974,7 +1002,7 @@ public class MainActivity extends Activity {
             String baseUrl = CnbProxyServer.getInstance().getBaseUrl();
             etBaseUrl.setText(baseUrl);
             etModel.setText("deepseek-v4-flash");
-            etApiKey.setText("");
+            etApiKey.setText("cnb-free");
             cbApprove.setChecked(true);
             if (!CnbProxyServer.getInstance().isRunning() && !CnbProxyServer.getInstance().isStarting()) {
                 tvProxyStatus.setVisibility(View.VISIBLE);
@@ -1025,23 +1053,25 @@ public class MainActivity extends Activity {
         btnCancel.setOnClickListener(v -> dialog.dismiss());
 
         btnSave.setOnClickListener(v -> {
-            savePigoConfig(
-                    etBaseUrl.getText().toString().trim(),
-                    etApiKey.getText().toString().trim(),
-                    etModel.getText().toString().trim(),
-                    cbApprove.isChecked()
-            );
+            String url = etBaseUrl.getText().toString().trim();
+            String key = etApiKey.getText().toString().trim();
+            String mdl = etModel.getText().toString().trim();
+            if (key.isEmpty() && !url.contains("127.0.0.1") && !url.contains("localhost") && !url.isEmpty()) {
+                Toast.makeText(this, "提示: 外部端点未填写 API Key，可能会报错", Toast.LENGTH_SHORT).show();
+            }
+            savePigoConfig(url, key, mdl, cbApprove.isChecked());
             Toast.makeText(this, I18n.get(I18n.Key.TOAST_CONFIG_SAVED), Toast.LENGTH_SHORT).show();
             dialog.dismiss();
         });
 
         btnSaveRun.setOnClickListener(v -> {
-            savePigoConfig(
-                    etBaseUrl.getText().toString().trim(),
-                    etApiKey.getText().toString().trim(),
-                    etModel.getText().toString().trim(),
-                    cbApprove.isChecked()
-            );
+            String url = etBaseUrl.getText().toString().trim();
+            String key = etApiKey.getText().toString().trim();
+            String mdl = etModel.getText().toString().trim();
+            if (key.isEmpty() && !url.contains("127.0.0.1") && !url.contains("localhost") && !url.isEmpty()) {
+                Toast.makeText(this, "提示: 外部端点未填写 API Key，可能会报错", Toast.LENGTH_SHORT).show();
+            }
+            savePigoConfig(url, key, mdl, cbApprove.isChecked());
             dialog.dismiss();
             launchPigoSession();
         });
@@ -1050,7 +1080,7 @@ public class MainActivity extends Activity {
     }
 
     private void ensureProxyRunningIfNeeded(String url) {
-        if (url != null && (url.contains("127.0.0.1") || url.contains("localhost:7863"))) {
+        if (url == null || url.isEmpty() || url.contains("127.0.0.1") || url.contains("localhost")) {
             if (!CnbProxyServer.getInstance().isRunning() && !CnbProxyServer.getInstance().isStarting()) {
                 CnbProxyServer.getInstance().startAsync(new ProxyConfig.Builder().build());
             }
@@ -1066,6 +1096,7 @@ public class MainActivity extends Activity {
     private void startNewPigoSession() {
         SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
         ensureProxyRunningIfNeeded(sp.getString("base_url", ""));
+        syncPigoConfigToRootfs();
         if (currentSession != null && currentSession.isRunning()) {
             terminalBridge.sendString(currentSession, "pigo\n");
             Toast.makeText(this, "已在当前终端启动 pigo", Toast.LENGTH_SHORT).show();
@@ -1077,6 +1108,7 @@ public class MainActivity extends Activity {
     private void continueRecentPigoSession() {
         SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
         ensureProxyRunningIfNeeded(sp.getString("base_url", ""));
+        syncPigoConfigToRootfs();
         if (currentSession != null && currentSession.isRunning()) {
             terminalBridge.sendString(currentSession, "pigo -c\n");
             Toast.makeText(this, "正在恢复最近的 Pigo 会话", Toast.LENGTH_SHORT).show();
@@ -1088,6 +1120,7 @@ public class MainActivity extends Activity {
     private void resumePigoSession(String sessionId) {
         SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
         ensureProxyRunningIfNeeded(sp.getString("base_url", ""));
+        syncPigoConfigToRootfs();
         String cmd = "pigo -r " + sessionId + "\n";
         if (currentSession != null && currentSession.isRunning()) {
             terminalBridge.sendString(currentSession, cmd);
@@ -1393,6 +1426,9 @@ public class MainActivity extends Activity {
     }
 
     private void savePigoConfig(String baseUrl, String apiKey, String model, boolean approve) {
+        if (apiKey.isEmpty() && (baseUrl.contains("127.0.0.1") || baseUrl.contains("localhost"))) {
+            apiKey = "cnb-free";
+        }
         SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
         sp.edit()
                 .putString("base_url", baseUrl)
@@ -1411,6 +1447,18 @@ public class MainActivity extends Activity {
         String model = sp.getString("model", "").trim();
         boolean approve = sp.getBoolean("approve", true);
 
+        if (baseUrl.isEmpty() && apiKey.isEmpty() && model.isEmpty()) {
+            baseUrl = CnbProxyServer.getInstance().getBaseUrl();
+            apiKey = "cnb-free";
+            model = "deepseek-v4-flash";
+            ensureProxyRunningIfNeeded(baseUrl);
+        }
+
+        String effectiveApiKey = apiKey;
+        if (effectiveApiKey.isEmpty() && (baseUrl.contains("127.0.0.1") || baseUrl.contains("localhost"))) {
+            effectiveApiKey = "cnb-free";
+        }
+
         File rootfs = engine != null ? engine.getRootfsDir() : null;
         if (rootfs == null || !rootfs.exists()) {
             return;
@@ -1427,8 +1475,8 @@ public class MainActivity extends Activity {
         if (!baseUrl.isEmpty()) {
             sb.append("base_url = \"").append(escapeToml(baseUrl)).append("\"\n");
         }
-        if (!apiKey.isEmpty()) {
-            sb.append("api_key = \"").append(escapeToml(apiKey)).append("\"\n");
+        if (!effectiveApiKey.isEmpty()) {
+            sb.append("api_key = \"").append(escapeToml(effectiveApiKey)).append("\"\n");
         }
         sb.append("approve = ").append(approve).append("\n");
 
@@ -1440,11 +1488,36 @@ public class MainActivity extends Activity {
 
         File envFile = new File(rootfs, "root/.pigo.env");
         try (FileWriter fw = new FileWriter(envFile)) {
-            if (!apiKey.isEmpty()) {
-                fw.write("export OPENCODE_API_KEY=\"" + escapeToml(apiKey) + "\"\n");
+            if (!effectiveApiKey.isEmpty()) {
+                fw.write("export OPENAI_API_KEY=\"" + escapeToml(effectiveApiKey) + "\"\n");
+                fw.write("export OPENCODE_API_KEY=\"" + escapeToml(effectiveApiKey) + "\"\n");
             }
             if (!baseUrl.isEmpty()) {
+                fw.write("export OPENAI_BASE_URL=\"" + escapeToml(baseUrl) + "\"\n");
                 fw.write("export OPENCODE_GO_BASE_URL=\"" + escapeToml(baseUrl) + "\"\n");
+            }
+        } catch (Exception ignored) {}
+
+        ensureEnvSourceInScript(new File(rootfs, "root/.bashrc"));
+        ensureEnvSourceInScript(new File(rootfs, "root/.profile"));
+    }
+
+    private void ensureEnvSourceInScript(File file) {
+        try {
+            String content = "";
+            if (file.exists()) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                try (InputStream fis = new FileInputStream(file)) {
+                    byte[] buf = new byte[1024];
+                    int n;
+                    while ((n = fis.read(buf)) != -1) baos.write(buf, 0, n);
+                }
+                content = baos.toString("UTF-8");
+            }
+            if (!content.contains(".pigo.env")) {
+                try (FileWriter fw = new FileWriter(file, true)) {
+                    fw.write("\n[ -f /root/.pigo.env ] && . /root/.pigo.env\n");
+                }
             }
         } catch (Exception ignored) {}
     }

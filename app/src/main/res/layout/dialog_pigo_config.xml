@@ -170,7 +170,7 @@
             android:id="@+id/et_pigo_api_key"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="sk-..."
+            android:hint="sk-... (CNB免费可填 cnb-free)"
             android:textSize="12sp"
             android:typeface="monospace"
             android:textColor="#E6EDF3"
