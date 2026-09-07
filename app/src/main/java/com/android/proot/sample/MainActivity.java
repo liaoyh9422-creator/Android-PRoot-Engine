@@ -39,6 +39,8 @@ import com.android.proot.PRootConfig;
 import com.android.proot.PRootEngine;
 import com.android.proot.sample.terminal.TerminalBridge;
 import com.android.proot.sample.ui.UiTheme;
+import com.android.proot.proxy.CnbProxyServer;
+import com.android.proot.proxy.ProxyConfig;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
@@ -859,6 +861,8 @@ public class MainActivity extends Activity {
 
         TextView tvTitle = dialogView.findViewById(R.id.tv_dialog_title);
         TextView badgePigo = dialogView.findViewById(R.id.badge_dialog_pigo);
+        TextView btnPresetCnb = dialogView.findViewById(R.id.btn_preset_cnb);
+        TextView tvProxyStatus = dialogView.findViewById(R.id.tv_proxy_status);
         TextView btnPresetOpenRouter = dialogView.findViewById(R.id.btn_preset_openrouter);
         TextView btnPresetDeepSeek = dialogView.findViewById(R.id.btn_preset_deepseek);
         EditText etBaseUrl = dialogView.findViewById(R.id.et_pigo_base_url);
@@ -874,6 +878,8 @@ public class MainActivity extends Activity {
         // Styling dialog components
         dialogView.findViewById(R.id.dialog_container).setBackground(UiTheme.roundRect(this, UiTheme.C_SURFACE, UiTheme.C_BORDER, 1, 10));
         styleBadge(badgePigo, UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN);
+        styleCapsule(btnPresetCnb, UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN);
+        btnPresetCnb.setText(I18n.get(I18n.Key.BTN_PRESET_CNB));
         styleCapsule(btnPresetOpenRouter, UiTheme.C_BLUE, UiTheme.C_BLUE_BG, UiTheme.C_BLUE);
         styleCapsule(btnPresetDeepSeek, UiTheme.C_PURPLE, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE);
         styleCapsule(btnFetchModels, UiTheme.C_YELLOW, UiTheme.C_YELLOW_BG, UiTheme.C_YELLOW);
@@ -907,14 +913,85 @@ public class MainActivity extends Activity {
             etApiKey.setSelection(etApiKey.getText().length());
         });
 
+        Runnable updateProxyStatus = () -> {
+            if (tvProxyStatus == null) return;
+            if (CnbProxyServer.getInstance().isRunning()) {
+                tvProxyStatus.setVisibility(View.VISIBLE);
+                tvProxyStatus.setText(String.format(I18n.get(I18n.Key.STATUS_PROXY_RUNNING), CnbProxyServer.getInstance().getBaseUrl()));
+                tvProxyStatus.setTextColor(Color.parseColor(UiTheme.C_GREEN));
+            } else if (CnbProxyServer.getInstance().isStarting()) {
+                tvProxyStatus.setVisibility(View.VISIBLE);
+                tvProxyStatus.setText(I18n.get(I18n.Key.STATUS_PROXY_STARTING));
+                tvProxyStatus.setTextColor(Color.parseColor(UiTheme.C_YELLOW));
+            } else {
+                String currentUrl = etBaseUrl.getText().toString().trim();
+                if (currentUrl.contains("127.0.0.1") || currentUrl.contains("localhost")) {
+                    tvProxyStatus.setVisibility(View.VISIBLE);
+                    tvProxyStatus.setText(I18n.get(I18n.Key.STATUS_PROXY_STOPPED));
+                    tvProxyStatus.setTextColor(Color.parseColor(UiTheme.C_DIM));
+                } else {
+                    tvProxyStatus.setVisibility(View.GONE);
+                }
+            }
+        };
+
+        CnbProxyServer.StateListener stateListener = new CnbProxyServer.StateListener() {
+            @Override
+            public void onStarting() {
+                mainHandler.post(updateProxyStatus);
+            }
+
+            @Override
+            public void onStarted(int port, String baseUrl) {
+                mainHandler.post(() -> {
+                    updateProxyStatus.run();
+                    if (etBaseUrl.getText().toString().contains("127.0.0.1")) {
+                        etBaseUrl.setText(baseUrl);
+                    }
+                });
+            }
+
+            @Override
+            public void onStopped() {
+                mainHandler.post(updateProxyStatus);
+            }
+
+            @Override
+            public void onError(String message, Throwable error) {
+                mainHandler.post(() -> {
+                    updateProxyStatus.run();
+                    Toast.makeText(MainActivity.this, "Proxy error: " + message, Toast.LENGTH_SHORT).show();
+                });
+            }
+        };
+        CnbProxyServer.getInstance().setStateListener(stateListener);
+        dialog.setOnDismissListener(d -> CnbProxyServer.getInstance().setStateListener(null));
+
         // Preset buttons
+        btnPresetCnb.setOnClickListener(v -> {
+            String baseUrl = CnbProxyServer.getInstance().getBaseUrl();
+            etBaseUrl.setText(baseUrl);
+            etModel.setText("deepseek-v4-flash");
+            etApiKey.setText("");
+            cbApprove.setChecked(true);
+            if (!CnbProxyServer.getInstance().isRunning() && !CnbProxyServer.getInstance().isStarting()) {
+                tvProxyStatus.setVisibility(View.VISIBLE);
+                tvProxyStatus.setText(I18n.get(I18n.Key.STATUS_PROXY_STARTING));
+                tvProxyStatus.setTextColor(Color.parseColor(UiTheme.C_YELLOW));
+                CnbProxyServer.getInstance().startAsync(new ProxyConfig.Builder().build());
+            } else {
+                updateProxyStatus.run();
+            }
+        });
         btnPresetOpenRouter.setOnClickListener(v -> {
             etBaseUrl.setText("https://openrouter.ai/api/v1");
             etModel.setText("openrouter/free");
+            updateProxyStatus.run();
         });
         btnPresetDeepSeek.setOnClickListener(v -> {
             etBaseUrl.setText("https://api.deepseek.com/v1");
             etModel.setText("deepseek-chat");
+            updateProxyStatus.run();
         });
 
         // Fetch models button
@@ -970,11 +1047,23 @@ public class MainActivity extends Activity {
         dialog.show();
     }
 
+    private void ensureProxyRunningIfNeeded(String url) {
+        if (url != null && (url.contains("127.0.0.1") || url.contains("localhost:7863"))) {
+            if (!CnbProxyServer.getInstance().isRunning() && !CnbProxyServer.getInstance().isStarting()) {
+                CnbProxyServer.getInstance().startAsync(new ProxyConfig.Builder().build());
+            }
+        }
+    }
+
     private void launchPigoSession() {
+        SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
+        ensureProxyRunningIfNeeded(sp.getString("base_url", ""));
         startNewPigoSession();
     }
 
     private void startNewPigoSession() {
+        SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
+        ensureProxyRunningIfNeeded(sp.getString("base_url", ""));
         if (currentSession != null && currentSession.isRunning()) {
             terminalBridge.sendString(currentSession, "pigo\n");
             Toast.makeText(this, "已在当前终端启动 pigo", Toast.LENGTH_SHORT).show();
@@ -984,6 +1073,8 @@ public class MainActivity extends Activity {
     }
 
     private void continueRecentPigoSession() {
+        SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
+        ensureProxyRunningIfNeeded(sp.getString("base_url", ""));
         if (currentSession != null && currentSession.isRunning()) {
             terminalBridge.sendString(currentSession, "pigo -c\n");
             Toast.makeText(this, "正在恢复最近的 Pigo 会话", Toast.LENGTH_SHORT).show();
@@ -993,6 +1084,8 @@ public class MainActivity extends Activity {
     }
 
     private void resumePigoSession(String sessionId) {
+        SharedPreferences sp = getSharedPreferences("pigo_config", Context.MODE_PRIVATE);
+        ensureProxyRunningIfNeeded(sp.getString("base_url", ""));
         String cmd = "pigo -r " + sessionId + "\n";
         if (currentSession != null && currentSession.isRunning()) {
             terminalBridge.sendString(currentSession, cmd);
@@ -1429,6 +1522,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         stopCurrentSession();
+        CnbProxyServer.getInstance().stop();
         executor.shutdownNow();
     }
 }

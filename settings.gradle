@@ -7,4 +7,4 @@ pluginManagement {
     }
 }
 rootProject.name = "Android-PRoot-Engine"
-include ':app', ':core'
+include ':app', ':core', ':proxy'

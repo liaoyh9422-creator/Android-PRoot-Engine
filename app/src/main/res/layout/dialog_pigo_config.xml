@@ -50,32 +50,63 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:orientation="vertical"
             android:layout_marginBottom="10dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <HorizontalScrollView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="快速预设:"
-                android:textSize="11.5sp"
-                android:textColor="#8B949E" />
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="快速预设:"
+                        android:textSize="11.5sp"
+                        android:textColor="#8B949E" />
+
+                    <TextView
+                        android:id="@+id/btn_preset_cnb"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="✨ 本地 CNB 免费"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/btn_preset_openrouter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="OpenRouter"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/btn_preset_deepseek"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="DeepSeek 官方"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </HorizontalScrollView>
 
             <TextView
-                android:id="@+id/btn_preset_openrouter"
-                android:layout_width="wrap_content"
+                android:id="@+id/tv_proxy_status"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="OpenRouter"
-                android:textSize="11sp" />
-
-            <TextView
-                android:id="@+id/btn_preset_deepseek"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:text="DeepSeek 官方"
-                android:textSize="11sp" />
+                android:layout_marginTop="5dp"
+                android:text="本地代理: 未启动"
+                android:textSize="10.5sp"
+                android:typeface="monospace"
+                android:textColor="#8B949E"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- 1. Base URL -->

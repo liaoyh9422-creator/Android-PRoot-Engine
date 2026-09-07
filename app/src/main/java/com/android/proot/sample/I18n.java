@@ -91,7 +91,11 @@ public class I18n {
         BTN_CANCEL,
         TOAST_SESSION_DELETED,
         TOAST_SESSION_RESUMED,
-        BADGE_TOTAL_SESSIONS
+        BADGE_TOTAL_SESSIONS,
+        BTN_PRESET_CNB,
+        STATUS_PROXY_RUNNING,
+        STATUS_PROXY_STOPPED,
+        STATUS_PROXY_STARTING
     }
 
     private static final Map<Language, Map<Key, String>> STRINGS = new HashMap<>();
@@ -159,6 +163,10 @@ public class I18n {
         zh.put(Key.TOAST_SESSION_DELETED, "会话已删除");
         zh.put(Key.TOAST_SESSION_RESUMED, "正在恢复会话: %s");
         zh.put(Key.BADGE_TOTAL_SESSIONS, "%d 个会话");
+        zh.put(Key.BTN_PRESET_CNB, "✨ 本地 CNB 免费");
+        zh.put(Key.STATUS_PROXY_RUNNING, "本地代理运行中: %s");
+        zh.put(Key.STATUS_PROXY_STOPPED, "本地代理未启动");
+        zh.put(Key.STATUS_PROXY_STARTING, "本地代理正在获取凭证启动...");
         STRINGS.put(Language.ZH_CN, zh);
 
         // --- 2. English (EN) ---
@@ -219,6 +227,10 @@ public class I18n {
         en.put(Key.TOAST_SESSION_DELETED, "Session deleted");
         en.put(Key.TOAST_SESSION_RESUMED, "Resuming session: %s");
         en.put(Key.BADGE_TOTAL_SESSIONS, "%d sessions");
+        en.put(Key.BTN_PRESET_CNB, "✨ Free Local CNB");
+        en.put(Key.STATUS_PROXY_RUNNING, "Local Proxy Running: %s");
+        en.put(Key.STATUS_PROXY_STOPPED, "Local Proxy Stopped");
+        en.put(Key.STATUS_PROXY_STARTING, "Starting local proxy & acquiring tokens...");
         STRINGS.put(Language.EN, en);
 
         // --- 3. 日本語 (JA) ---
@@ -279,6 +291,10 @@ public class I18n {
         ja.put(Key.TOAST_SESSION_DELETED, "セッションを削除しました");
         ja.put(Key.TOAST_SESSION_RESUMED, "セッションを再開中: %s");
         ja.put(Key.BADGE_TOTAL_SESSIONS, "%d 件のセッション");
+        ja.put(Key.BTN_PRESET_CNB, "✨ ローカル CNB 無料");
+        ja.put(Key.STATUS_PROXY_RUNNING, "ローカルプロキシ稼働中: %s");
+        ja.put(Key.STATUS_PROXY_STOPPED, "ローカルプロキシ停止中");
+        ja.put(Key.STATUS_PROXY_STARTING, "ローカルプロキシ起動中 (トークン取得)...");
         STRINGS.put(Language.JA, ja);
     }
 
