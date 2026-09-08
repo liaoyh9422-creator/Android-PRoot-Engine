@@ -58,7 +58,7 @@ public final class SshConfigDialog {
         header.setPadding(0, 0, 0, UiTheme.dp(activity, 10));
 
         TextView tvTitle = new TextView(activity);
-        tvTitle.setText("🔒 SSH 远程终端服务 (Dropbear)");
+        tvTitle.setText("🔒 SSH 远程终端服务 (OpenSSH)");
         tvTitle.setTextColor(Color.parseColor(UiTheme.C_TEXT));
         tvTitle.setTextSize(15f);
         tvTitle.setTypeface(Typeface.DEFAULT_BOLD);
@@ -83,10 +83,10 @@ public final class SshConfigDialog {
         statusRow.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView tvStatusBadge = new TextView(activity);
-        updateStatusBadge(activity, tvStatusBadge, installed);
+        updateStatusBadge(activity, tvStatusBadge, engine);
         statusRow.addView(tvStatusBadge);
 
-        TextView btnInstall = UiTheme.createButton(activity, "⚡ 一键安装 SSH", UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN, 5);
+        TextView btnInstall = UiTheme.createButton(activity, "⚡ 一键安装 OpenSSH", UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN, 5);
         btnInstall.setVisibility(installed ? View.GONE : View.VISIBLE);
         LinearLayout.LayoutParams instLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, UiTheme.dp(activity, 32));
         instLp.setMarginStart(UiTheme.dp(activity, 10));
@@ -180,15 +180,15 @@ public final class SshConfigDialog {
         // Listeners
         btnInstall.setOnClickListener(v -> {
             btnInstall.setEnabled(false);
-            btnInstall.setText("正在安装 Dropbear...");
+            btnInstall.setText("正在安装 OpenSSH...");
             ssh.installSsh(engine, (ok, msg) -> {
                 btnInstall.setEnabled(true);
-                btnInstall.setText("⚡ 一键安装 SSH");
+                btnInstall.setText("⚡ 一键安装 OpenSSH");
                 if (ok) {
                     btnInstall.setVisibility(View.GONE);
                     btnToggle.setEnabled(true);
-                    updateStatusBadge(activity, tvStatusBadge, true);
-                    Toast.makeText(activity, "Dropbear SSH 安装成功！", Toast.LENGTH_SHORT).show();
+                    updateStatusBadge(activity, tvStatusBadge, engine);
+                    Toast.makeText(activity, "SSH 服务安装配置成功！", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(activity, msg, Toast.LENGTH_LONG).show();
                 }
@@ -229,8 +229,11 @@ public final class SshConfigDialog {
         dialog.show();
     }
 
-    private static void updateStatusBadge(Activity a, TextView badge, boolean installed) {
-        badge.setText(installed ? "✔ 已就绪 (/usr/sbin/dropbear)" : "⚠ 未检测到 SSH 服务");
+    private static void updateStatusBadge(Activity a, TextView badge, PRootEngine engine) {
+        SshServerManager ssh = SshServerManager.getInstance();
+        boolean installed = ssh.isInstalled(engine.getRootfsDir());
+        String type = ssh.getSshBinaryType(engine.getRootfsDir());
+        badge.setText(installed ? "✔ 已就绪 (" + type + ")" : "⚠ 未检测到 SSH 服务");
         badge.setTextColor(Color.parseColor(installed ? UiTheme.C_GREEN : UiTheme.C_YELLOW));
         badge.setBackground(UiTheme.roundRect(a, installed ? UiTheme.C_GREEN_BG : UiTheme.C_YELLOW_BG,
                 installed ? UiTheme.C_GREEN : UiTheme.C_YELLOW, 1, 5));
