@@ -83,6 +83,23 @@
                 android:typeface="monospace"
                 android:textColor="#8B949E" />
 
+            <!-- Mode Switcher Badge (🌐Web / 💻CLI) -->
+            <TextView
+                android:id="@+id/btn_mode_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="🌐Web"
+                android:textSize="10.5sp"
+                android:typeface="monospace"
+                android:textStyle="bold"
+                android:textColor="#39C5CF"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:singleLine="true" />
+
             <!-- Top Drawer Dropdown Toggle (▼) -->
             <TextView
                 android:id="@+id/btn_dropdown_toggle"
@@ -115,7 +132,7 @@
             android:layout_height="1dp"
             android:background="#21262D" />
 
-        <!-- 2. Interactive Terminal Viewport (Maximized) -->
+        <!-- 2. Interactive Terminal & Web Studio Viewport -->
         <FrameLayout
             android:id="@+id/frame_terminal"
             android:layout_width="match_parent"
@@ -129,7 +146,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:focusable="true"
-                android:focusableInTouchMode="true" />
+                android:focusableInTouchMode="true"
+                android:visibility="visible" />
+
+            <WebView
+                android:id="@+id/web_view_studio"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
         </FrameLayout>
 
         <!-- Divider line -->

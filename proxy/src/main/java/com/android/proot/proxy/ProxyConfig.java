@@ -1,11 +1,18 @@
 package com.android.proot.proxy;
 
+import java.io.File;
+
 /**
  * Immutable configuration entity for CNB OpenAI Proxy Server.
  */
 public class ProxyConfig {
+    public static final int DEFAULT_WEB_PORT = 7865;
+
     private final String listenHost;
     private final int port;
+    private final int webPort;
+    private final File webRoot;
+    private final boolean enableWebStudio;
     private final String apiKey;
     private final String model;
     private final int poolMin;
@@ -19,6 +26,9 @@ public class ProxyConfig {
     private ProxyConfig(Builder b) {
         this.listenHost = b.listenHost;
         this.port = b.port;
+        this.webPort = b.webPort;
+        this.webRoot = b.webRoot;
+        this.enableWebStudio = b.enableWebStudio;
         this.apiKey = b.apiKey;
         this.model = b.model;
         this.poolMin = b.poolMin;
@@ -32,6 +42,9 @@ public class ProxyConfig {
 
     public String getListenHost() { return listenHost; }
     public int getPort() { return port; }
+    public int getWebPort() { return webPort; }
+    public File getWebRoot() { return webRoot; }
+    public boolean isEnableWebStudio() { return enableWebStudio; }
     public String getApiKey() { return apiKey; }
     public String getModel() { return model; }
     public int getPoolMin() { return poolMin; }
@@ -45,6 +58,9 @@ public class ProxyConfig {
     public static class Builder {
         private String listenHost = "0.0.0.0";
         private int port = 7863;
+        private int webPort = DEFAULT_WEB_PORT;
+        private File webRoot = null;
+        private boolean enableWebStudio = true;
         private String apiKey = "";
         private String model = "deepseek-v4-flash";
         private int poolMin = 2;
@@ -57,6 +73,9 @@ public class ProxyConfig {
 
         public Builder setListenHost(String host) { this.listenHost = host; return this; }
         public Builder setPort(int port) { this.port = port; return this; }
+        public Builder setWebPort(int port) { this.webPort = port; return this; }
+        public Builder setWebRoot(File root) { this.webRoot = root; return this; }
+        public Builder setEnableWebStudio(boolean enable) { this.enableWebStudio = enable; return this; }
         public Builder setApiKey(String key) { this.apiKey = key != null ? key : ""; return this; }
         public Builder setModel(String model) { this.model = model != null && !model.isEmpty() ? model : "deepseek-v4-flash"; return this; }
         public Builder setPoolMin(int min) { this.poolMin = Math.max(1, min); return this; }

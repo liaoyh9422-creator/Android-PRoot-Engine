@@ -64,15 +64,18 @@ public class MainActivity extends Activity {
     private TextView tvActiveWorkspaceChip;
     private TextView tvTopProxyBadge;
     private TextView badgeSessionCount;
+    private TextView btnModeToggle;
     private TextView btnDropdownToggle;
     private TextView btnMoreMenu;
 
-    // Terminal View
+    // Terminal View & Web Studio
     private View frameTerminal;
     private TerminalView terminalView;
+    private android.webkit.WebView webViewStudio;
 
     private int terminalFontSize = 12;
     private boolean isFullScreen = false;
+    private boolean isWebMode = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -204,11 +207,14 @@ public class MainActivity extends Activity {
         tvActiveWorkspaceChip = findViewById(R.id.tv_active_workspace_chip);
         tvTopProxyBadge = findViewById(R.id.tv_top_proxy_badge);
         badgeSessionCount = findViewById(R.id.badge_session_count);
+        btnModeToggle = findViewById(R.id.btn_mode_toggle);
         btnDropdownToggle = findViewById(R.id.btn_dropdown_toggle);
         btnMoreMenu = findViewById(R.id.btn_more_menu);
 
         frameTerminal = findViewById(R.id.frame_terminal);
         terminalView = findViewById(R.id.terminal_view);
+        webViewStudio = findViewById(R.id.web_view_studio);
+        setupWebViewStudio();
     }
 
     private void applyUiTheme() {
@@ -231,6 +237,12 @@ public class MainActivity extends Activity {
         if (badgeSessionCount != null) {
             badgeSessionCount.setBackground(UiTheme.roundRect(this, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB, 1, 4));
             badgeSessionCount.setPadding(UiTheme.dp(this, 6), UiTheme.dp(this, 2), UiTheme.dp(this, 6), UiTheme.dp(this, 2));
+        }
+
+        if (btnModeToggle != null) {
+            btnModeToggle.setBackground(UiTheme.roundRect(this, UiTheme.C_CYAN_BG, UiTheme.C_CYAN, 1, 4));
+            btnModeToggle.setPadding(UiTheme.dp(this, 6), UiTheme.dp(this, 2), UiTheme.dp(this, 6), UiTheme.dp(this, 2));
+            UiTheme.applyTactileFeedback(btnModeToggle);
         }
 
         if (btnDropdownToggle != null) {
@@ -257,6 +269,10 @@ public class MainActivity extends Activity {
 
         if (tvTopProxyBadge != null) {
             tvTopProxyBadge.setOnClickListener(v -> showProxyOpsDialog());
+        }
+
+        if (btnModeToggle != null) {
+            btnModeToggle.setOnClickListener(v -> toggleDualMode());
         }
 
         if (btnDropdownToggle != null) {
@@ -524,10 +540,55 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void setupWebViewStudio() {
+        if (webViewStudio == null) return;
+        android.webkit.WebSettings s = webViewStudio.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setDatabaseEnabled(true);
+        s.setAllowFileAccess(true);
+        s.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
+        webViewStudio.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
+                return false;
+            }
+        });
+    }
+
+    private void toggleDualMode() {
+        isWebMode = !isWebMode;
+        if (isWebMode) {
+            if (btnModeToggle != null) btnModeToggle.setText("💻CLI");
+            if (terminalView != null) terminalView.setVisibility(View.GONE);
+            if (webViewStudio != null) {
+                webViewStudio.setVisibility(View.VISIBLE);
+                configManager.ensureProxyRunningIfNeeded(null);
+                String webUrl = com.android.proot.proxy.CnbProxyServer.getInstance().getWebUrl();
+                webViewStudio.loadUrl(webUrl);
+            }
+        } else {
+            if (btnModeToggle != null) btnModeToggle.setText("🌐Web");
+            if (webViewStudio != null) webViewStudio.setVisibility(View.GONE);
+            if (terminalView != null) {
+                terminalView.setVisibility(View.VISIBLE);
+                terminalView.requestFocus();
+            }
+        }
+    }
+
     @Override
     public void onBackPressed() {
         if (topDrawerController != null && topDrawerController.isExpanded()) {
             topDrawerController.collapse();
+            return;
+        }
+        if (isWebMode) {
+            if (webViewStudio != null && webViewStudio.canGoBack()) {
+                webViewStudio.goBack();
+                return;
+            }
+            toggleDualMode();
             return;
         }
         if (isFullScreen) {
@@ -552,6 +613,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (webViewStudio != null) {
+            webViewStudio.destroy();
+            webViewStudio = null;
+        }
         if (sessionManager != null) {
             sessionManager.destroy();
         }

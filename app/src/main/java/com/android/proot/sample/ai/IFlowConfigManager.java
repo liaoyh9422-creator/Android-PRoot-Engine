@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.android.proot.proxy.CnbProxyServer;
 import com.android.proot.proxy.ProxyConfig;
+import com.android.proot.proxy.WebStudioServer;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -305,12 +306,28 @@ public final class IFlowConfigManager {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
+    public File getWebDir() {
+        return new File(appContext.getFilesDir(), "web");
+    }
+
+    public void ensureWebAssetsDeployed() {
+        File webDir = getWebDir();
+        File indexHtml = new File(webDir, "index.html");
+        if (!indexHtml.exists() || indexHtml.length() == 0) {
+            try (InputStream is = appContext.getAssets().open("web.zip")) {
+                WebStudioServer.deployWebZip(is, webDir);
+            } catch (Exception ignored) {}
+        }
+    }
+
     public void ensureProxyRunningIfNeeded(String url) {
         if (url == null || url.isEmpty() || isLocalProxy(url)) {
             if (!CnbProxyServer.getInstance().isRunning() && !CnbProxyServer.getInstance().isStarting()) {
+                ensureWebAssetsDeployed();
                 String effort = getReasoningEffort();
                 boolean enableThinking = !"low".equalsIgnoreCase(effort);
                 CnbProxyServer.getInstance().startAsync(new ProxyConfig.Builder()
+                        .setWebRoot(getWebDir())
                         .setReasoningEffort(effort)
                         .setEnableThinking(enableThinking)
                         .build());
