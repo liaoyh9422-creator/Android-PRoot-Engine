@@ -248,6 +248,197 @@ public class WebStudioServerTest {
         }
     }
 
+    @Test
+    public void testAvailableToolsContract() throws Exception {
+        JSONArray tools = WebStudioServer.getAvailableTools();
+        Assert.assertNotNull(tools);
+        Assert.assertTrue("Should have at least 8 tools", tools.length() >= 8);
+
+        boolean hasShell = false;
+        boolean hasReadFile = false;
+        boolean hasWriteFile = false;
+        boolean hasEditFile = false;
+        boolean hasListDir = false;
+        boolean hasGrepFiles = false;
+        boolean hasWebSearch = false;
+        boolean hasFetch = false;
+        boolean hasDoctor = false;
+
+        for (int i = 0; i < tools.length(); i++) {
+            JSONObject t = tools.getJSONObject(i);
+            Assert.assertEquals("function", t.optString("type"));
+            JSONObject fn = t.getJSONObject("function");
+            String name = fn.getString("name");
+            Assert.assertFalse(fn.optString("description").isEmpty());
+            Assert.assertTrue(fn.has("parameters"));
+
+            if ("shell".equals(name)) hasShell = true;
+            if ("read_file".equals(name)) hasReadFile = true;
+            if ("write_file".equals(name)) hasWriteFile = true;
+            if ("edit_file".equals(name)) hasEditFile = true;
+            if ("list_dir".equals(name)) hasListDir = true;
+            if ("grep_files".equals(name)) hasGrepFiles = true;
+            if ("web_search".equals(name)) hasWebSearch = true;
+            if ("fetch".equals(name)) hasFetch = true;
+            if ("runtime_doctor".equals(name)) hasDoctor = true;
+        }
+
+        Assert.assertTrue("hasShell", hasShell);
+        Assert.assertTrue("hasReadFile", hasReadFile);
+        Assert.assertTrue("hasWriteFile", hasWriteFile);
+        Assert.assertTrue("hasEditFile", hasEditFile);
+        Assert.assertTrue("hasListDir", hasListDir);
+        Assert.assertTrue("hasGrepFiles", hasGrepFiles);
+        Assert.assertTrue("hasWebSearch", hasWebSearch);
+        Assert.assertTrue("hasFetch", hasFetch);
+        Assert.assertTrue("hasDoctor", hasDoctor);
+    }
+
+    @Test
+    public void testCanonicalToolNameAndUiToolName() {
+        // canonicalToolName mappings
+        Assert.assertEquals("shell", WebStudioServer.canonicalToolName("bash"));
+        Assert.assertEquals("shell", WebStudioServer.canonicalToolName("sh"));
+        Assert.assertEquals("shell", WebStudioServer.canonicalToolName("terminal"));
+        Assert.assertEquals("shell", WebStudioServer.canonicalToolName("exec"));
+        Assert.assertEquals("read_file", WebStudioServer.canonicalToolName("cat"));
+        Assert.assertEquals("read_file", WebStudioServer.canonicalToolName("read"));
+        Assert.assertEquals("write_file", WebStudioServer.canonicalToolName("write"));
+        Assert.assertEquals("edit_file", WebStudioServer.canonicalToolName("edit"));
+        Assert.assertEquals("edit_file", WebStudioServer.canonicalToolName("patch"));
+        Assert.assertEquals("list_dir", WebStudioServer.canonicalToolName("ls"));
+        Assert.assertEquals("list_dir", WebStudioServer.canonicalToolName("dir"));
+        Assert.assertEquals("grep_files", WebStudioServer.canonicalToolName("grep"));
+        Assert.assertEquals("grep_files", WebStudioServer.canonicalToolName("search"));
+        Assert.assertEquals("web_search", WebStudioServer.canonicalToolName("web"));
+        Assert.assertEquals("fetch", WebStudioServer.canonicalToolName("browse"));
+        Assert.assertEquals("fetch", WebStudioServer.canonicalToolName("webfetch"));
+        Assert.assertEquals("runtime_doctor", WebStudioServer.canonicalToolName("doctor"));
+
+        // getUiToolName mappings
+        Assert.assertEquals("bash", WebStudioServer.getUiToolName("shell"));
+        Assert.assertEquals("read", WebStudioServer.getUiToolName("read_file"));
+        Assert.assertEquals("write", WebStudioServer.getUiToolName("write_file"));
+        Assert.assertEquals("edit", WebStudioServer.getUiToolName("edit_file"));
+        Assert.assertEquals("ls", WebStudioServer.getUiToolName("list_dir"));
+        Assert.assertEquals("grep", WebStudioServer.getUiToolName("grep_files"));
+        Assert.assertEquals("webfetch", WebStudioServer.getUiToolName("fetch"));
+        Assert.assertEquals("websearch", WebStudioServer.getUiToolName("web_search"));
+    }
+
+    @Test
+    public void testToolExecutionFileCrudAndDoctor() throws Exception {
+        ProxyConfig config = new ProxyConfig.Builder()
+                .setListenHost("127.0.0.1")
+                .setPort(7863)
+                .setWebPort(0)
+                .build();
+
+        File workDir = tempFolder.newFolder("workspace");
+        WebStudioServer server = new WebStudioServer(config, null);
+        server.setCwd(workDir.getAbsolutePath());
+
+        // 1. Shell runner delegation
+        AtomicReference<String> executedCmd = new AtomicReference<>("");
+        server.setShellRunner((command, cwd, timeoutMs) -> {
+            executedCmd.set(command);
+            return "Shell output from mocked runner";
+        });
+
+        JSONObject shellArgs = new JSONObject().put("command", "echo 'hello world'");
+        WebStudioServer.ToolResult shellRes = server.executeTool("shell", shellArgs, "sess-1");
+        Assert.assertFalse(shellRes.isError);
+        Assert.assertEquals("echo 'hello world'", executedCmd.get());
+        Assert.assertEquals("Shell output from mocked runner", shellRes.output);
+
+        // 2. write_file
+        File testFile = new File(workDir, "sample.txt");
+        JSONObject writeArgs = new JSONObject()
+                .put("path", testFile.getAbsolutePath())
+                .put("content", "Line 1: Alpha\nLine 2: Beta\nLine 3: Gamma\n");
+        WebStudioServer.ToolResult writeRes = server.executeTool("write_file", writeArgs, "sess-1");
+        Assert.assertFalse(writeRes.isError);
+        Assert.assertTrue(testFile.exists());
+
+        // 3. read_file
+        JSONObject readArgs = new JSONObject()
+                .put("path", testFile.getAbsolutePath())
+                .put("offset", 1)
+                .put("limit", 10);
+        WebStudioServer.ToolResult readRes = server.executeTool("read_file", readArgs, "sess-1");
+        Assert.assertFalse(readRes.isError);
+        Assert.assertTrue(readRes.output.contains("1 | Line 1: Alpha"));
+        Assert.assertTrue(readRes.output.contains("2 | Line 2: Beta"));
+
+        // 4. edit_file
+        JSONObject editArgs = new JSONObject()
+                .put("path", testFile.getAbsolutePath())
+                .put("old_string", "Beta")
+                .put("new_string", "Delta");
+        WebStudioServer.ToolResult editRes = server.executeTool("edit_file", editArgs, "sess-1");
+        Assert.assertFalse(editRes.isError);
+
+        WebStudioServer.ToolResult readAfterEdit = server.executeTool("read_file", readArgs, "sess-1");
+        Assert.assertTrue(readAfterEdit.output.contains("Line 2: Delta"));
+        Assert.assertFalse(readAfterEdit.output.contains("Line 2: Beta"));
+
+        // 5. list_dir
+        JSONObject listArgs = new JSONObject().put("path", workDir.getAbsolutePath());
+        WebStudioServer.ToolResult listRes = server.executeTool("list_dir", listArgs, "sess-1");
+        Assert.assertFalse(listRes.isError);
+        Assert.assertTrue(listRes.output.contains("sample.txt"));
+
+        // 6. grep_files
+        JSONObject grepArgs = new JSONObject()
+                .put("path", workDir.getAbsolutePath())
+                .put("query", "Delta");
+        WebStudioServer.ToolResult grepRes = server.executeTool("grep_files", grepArgs, "sess-1");
+        Assert.assertFalse(grepRes.isError);
+        Assert.assertTrue(grepRes.output.contains("sample.txt:2: Line 2: Delta"));
+
+        // 7. runtime_doctor
+        WebStudioServer.ToolResult docRes = server.executeTool("runtime_doctor", new JSONObject(), "sess-1");
+        Assert.assertFalse(docRes.isError);
+        JSONObject docJson = new JSONObject(docRes.output);
+        Assert.assertEquals("ready", docJson.optString("status"));
+        Assert.assertEquals("proot_linux", docJson.optString("backend"));
+    }
+
+    @Test
+    public void testSessionCwdRestApi() throws Exception {
+        ProxyConfig config = new ProxyConfig.Builder()
+                .setListenHost("127.0.0.1")
+                .setPort(7863)
+                .setWebPort(0)
+                .build();
+
+        WebStudioServer server = new WebStudioServer(config, null);
+        server.setCwd("/root/default-ws");
+        server.start();
+        int port = server.getActualPort();
+
+        try {
+            // GET default cwd
+            String getResp = doHttpRequest(port, "GET", "/api/sessions/my-session/cwd", null);
+            JSONObject getJson = new JSONObject(getResp);
+            Assert.assertEquals("/root/default-ws", getJson.getString("cwd"));
+
+            // POST update cwd
+            JSONObject updateBody = new JSONObject().put("cwd", "/root/custom-project");
+            String postResp = doHttpRequest(port, "POST", "/api/sessions/my-session/cwd", updateBody.toString());
+            JSONObject postJson = new JSONObject(postResp);
+            Assert.assertTrue(postJson.getBoolean("ok"));
+            Assert.assertEquals("/root/custom-project", postJson.getString("cwd"));
+
+            // GET updated cwd
+            String getResp2 = doHttpRequest(port, "GET", "/api/sessions/my-session/cwd", null);
+            JSONObject getJson2 = new JSONObject(getResp2);
+            Assert.assertEquals("/root/custom-project", getJson2.getString("cwd"));
+        } finally {
+            server.stop();
+        }
+    }
+
     private String doHttpRequest(int port, String method, String path, String body) throws Exception {
         URL url = new URL("http://127.0.0.1:" + port + path);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();

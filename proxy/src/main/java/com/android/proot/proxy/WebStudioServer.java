@@ -21,6 +21,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,9 +29,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -44,6 +48,51 @@ public final class WebStudioServer {
 
     public interface ProviderChangeListener {
         void onProviderChanged(String id, String baseUrl, String apiKey, String model);
+    }
+
+    public interface ShellRunner {
+        String run(String command, String cwd, int timeoutMs) throws Exception;
+    }
+
+    public static class ToolCall {
+        public final String id;
+        public final String name;
+        public final JSONObject arguments;
+
+        public ToolCall(String id, String name, JSONObject arguments) {
+            this.id = id;
+            this.name = name;
+            this.arguments = arguments != null ? arguments : new JSONObject();
+        }
+
+        public JSONObject toJson() {
+            JSONObject obj = new JSONObject();
+            try {
+                obj.put("id", id);
+                obj.put("type", "function");
+                JSONObject fn = new JSONObject();
+                fn.put("name", name);
+                fn.put("arguments", arguments.toString());
+                obj.put("function", fn);
+            } catch (Exception ignored) {}
+            return obj;
+        }
+    }
+
+    public static class ToolResult {
+        public final String output;
+        public final boolean isError;
+
+        public ToolResult(String output, boolean isError) {
+            this.output = output != null ? output : "";
+            this.isError = isError;
+        }
+    }
+
+    private static class ToolCallBuilder {
+        String id = "";
+        final StringBuilder name = new StringBuilder();
+        final StringBuilder arguments = new StringBuilder();
     }
 
     public static String maskKey(String key) {
@@ -108,6 +157,10 @@ public final class WebStudioServer {
     private final Map<String, ProviderData> providers = new LinkedHashMap<>();
     private volatile String activeProviderId = "deepseek";
     private ProviderChangeListener providerChangeListener;
+    private ShellRunner shellRunner;
+    private File rootfsDir;
+    private final Map<String, String> sessionCwds = new ConcurrentHashMap<>();
+    private final Set<String> cancelledSessions = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<String, List<JSONObject>> sessionHistories = new ConcurrentHashMap<>();
     private ServerSocket serverSocket;
     private Thread acceptThread;
@@ -124,6 +177,44 @@ public final class WebStudioServer {
 
     public void setProviderChangeListener(ProviderChangeListener listener) {
         this.providerChangeListener = listener;
+    }
+
+    public void setShellRunner(ShellRunner runner) {
+        this.shellRunner = runner;
+    }
+
+    public void setRootfsDir(File rootfsDir) {
+        this.rootfsDir = rootfsDir;
+    }
+
+    public void setCwd(String cwd) {
+        if (cwd != null && !cwd.isEmpty()) sessionCwds.put("default", cwd);
+    }
+
+    public String getSessionCwd(String sessionId) {
+        String s = (sessionId != null) ? sessionCwds.get(sessionId) : null;
+        if (s != null && !s.isEmpty()) return s;
+        s = sessionCwds.get("default");
+        return (s != null && !s.isEmpty()) ? s : "/root";
+    }
+
+    public void setSessionCwd(String sessionId, String cwd) {
+        if (sessionId != null && cwd != null) {
+            sessionCwds.put(sessionId, cwd);
+        }
+    }
+
+    public synchronized void selectProviderModel(String id, String model) {
+        if (id == null || id.isEmpty()) id = activeProviderId;
+        ProviderData p = providers.get(id);
+        if (p != null && model != null && !model.isEmpty()) {
+            p.model = model;
+            if (!p.models.contains(model)) p.models.add(0, model);
+            if (id.equals(activeProviderId)) {
+                notifyProviderChanged(p);
+            }
+            saveProvidersToDisk();
+        }
     }
 
     public synchronized String getActiveProviderId() {
@@ -401,6 +492,7 @@ public final class WebStudioServer {
         logger.onLog("WS", "WebSocket connected for session: " + sessionId);
 
         // Initial session_loaded event
+        String activeCwd = getSessionCwd(sessionId);
         JSONObject loaded = new JSONObject()
                 .put("v", 1)
                 .put("type", "event")
@@ -408,7 +500,7 @@ public final class WebStudioServer {
                 .put("payload", new JSONObject()
                         .put("event_type", "session_loaded")
                         .put("session_id", sessionId)
-                        .put("cwd", "/root")
+                        .put("cwd", activeCwd)
                         .put("usage", new JSONObject().put("input_tokens", 0).put("output_tokens", 0).put("total_tokens", 0)));
         sendWsTextFrame(out, loaded.toString());
 
@@ -426,25 +518,25 @@ public final class WebStudioServer {
                     JSONObject payload = envelope.optJSONObject("payload");
                     if (payload != null) {
                         String cmd = payload.optString("command");
-                        if ("send_message".equals(cmd)) {
-                            // Acknowledge command
-                            JSONObject ack = new JSONObject()
-                                    .put("v", 1)
-                                    .put("type", "ack")
-                                    .put("id", id)
-                                    .put("ts", System.currentTimeMillis())
-                                    .put("payload", new JSONObject().put("ok", true));
-                            sendWsTextFrame(out, ack.toString());
+                        // Immediate ack for any command
+                        JSONObject ack = new JSONObject()
+                                .put("v", 1)
+                                .put("type", "ack")
+                                .put("id", id)
+                                .put("ts", System.currentTimeMillis())
+                                .put("payload", new JSONObject().put("ok", true));
+                        sendWsTextFrame(out, ack.toString());
 
+                        if ("send_message".equals(cmd)) {
                             String userText = payload.optString("text", "").trim();
                             dispatchAiTurn(out, sessionId, userText);
                         } else if ("cancel".equals(cmd)) {
-                            JSONObject cancelled = new JSONObject()
-                                    .put("v", 1)
-                                    .put("type", "event")
-                                    .put("ts", System.currentTimeMillis())
-                                    .put("payload", new JSONObject().put("event_type", "agent_cancelled"));
-                            sendWsTextFrame(out, cancelled.toString());
+                            cancelledSessions.add(sessionId);
+                            sendAgentEvent(out, new JSONObject().put("event_type", "agent_cancelled"));
+                        } else if ("select_model".equals(cmd)) {
+                            String provId = payload.optString("provider_id");
+                            String m = payload.optString("model");
+                            if (!m.isEmpty()) selectProviderModel(provId, m);
                         }
                     }
                 }
@@ -455,111 +547,163 @@ public final class WebStudioServer {
         try { socket.close(); } catch (Exception ignored) {}
     }
 
+    private void sendAgentEvent(BufferedOutputStream out, JSONObject payload) {
+        try {
+            JSONObject event = new JSONObject()
+                    .put("v", 1)
+                    .put("type", "event")
+                    .put("ts", System.currentTimeMillis())
+                    .put("payload", payload);
+            sendWsTextFrame(out, event.toString());
+        } catch (Exception e) {
+            logger.onLog("WS", "Failed to send agent event: " + e.getMessage());
+        }
+    }
+
+    private void sendUsageUpdate(BufferedOutputStream out, int historyCount) {
+        try {
+            JSONObject usage = new JSONObject()
+                    .put("input_tokens", 80 * historyCount)
+                    .put("output_tokens", 40 * historyCount)
+                    .put("total_tokens", 120 * historyCount);
+            JSONObject categories = new JSONObject()
+                    .put("system_tools", 9)
+                    .put("messages", historyCount)
+                    .put("skills", 0)
+                    .put("mcp_tools", 0);
+            JSONObject payload = new JSONObject()
+                    .put("event_type", "usage_update")
+                    .put("usage", usage)
+                    .put("context_categories", categories);
+            sendAgentEvent(out, payload);
+        } catch (Exception ignored) {}
+    }
+
     private void dispatchAiTurn(BufferedOutputStream out, String sessionId, String prompt) {
         clientPool.execute(() -> {
             try {
-                ProviderData provider = getActiveProvider();
-                String baseUrl = (provider != null && provider.baseUrl != null && !provider.baseUrl.trim().isEmpty())
-                        ? provider.baseUrl.trim()
-                        : ("http://127.0.0.1:" + config.getPort() + "/v1");
-                String apiKey = (provider != null && provider.apiKey != null && !provider.apiKey.trim().isEmpty())
-                        ? provider.apiKey.trim()
-                        : config.getApiKey();
-                String model = (provider != null && provider.model != null && !provider.model.trim().isEmpty())
-                        ? provider.model.trim()
-                        : config.getModel();
-
-                String endpoint = baseUrl;
-                while (endpoint.endsWith("/")) {
-                    endpoint = endpoint.substring(0, endpoint.length() - 1);
-                }
-                if (!endpoint.endsWith("/chat/completions")) {
-                    endpoint += "/chat/completions";
-                }
-
-                URL url = new URL(endpoint);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                if (apiKey != null && !apiKey.isEmpty()) {
-                    conn.setRequestProperty("Authorization", "Bearer " + apiKey);
-                }
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(120000);
-
-                JSONObject body = new JSONObject();
-                body.put("model", model);
-                body.put("stream", true);
-                body.put("enable_thinking", config.isEnableThinking());
-                body.put("reasoning_effort", config.getReasoningEffort());
-
+                cancelledSessions.remove(sessionId);
                 List<JSONObject> history = sessionHistories.computeIfAbsent(sessionId != null ? sessionId : "default", k -> new ArrayList<>());
-                JSONArray messages = new JSONArray();
-                synchronized (history) {
-                    for (JSONObject m : history) messages.put(m);
-                }
                 JSONObject userMsg = new JSONObject().put("role", "user").put("content", prompt);
-                messages.put(userMsg);
-                body.put("messages", messages);
-
-                try (OutputStream os = conn.getOutputStream()) {
-                    os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                synchronized (history) {
+                    history.add(userMsg);
                 }
 
-                int code = conn.getResponseCode();
-                if (code == 200) {
-                    StringBuilder assistantText = new StringBuilder();
+                int maxRounds = 10;
+                int currentRound = 0;
+
+                while (currentRound < maxRounds && !cancelledSessions.contains(sessionId)) {
+                    currentRound++;
+                    ProviderData provider = getActiveProvider();
+                    String baseUrl = (provider != null && provider.baseUrl != null && !provider.baseUrl.trim().isEmpty())
+                            ? provider.baseUrl.trim()
+                            : ("http://127.0.0.1:" + config.getPort() + "/v1");
+                    String apiKey = (provider != null && provider.apiKey != null && !provider.apiKey.trim().isEmpty())
+                            ? provider.apiKey.trim()
+                            : config.getApiKey();
+                    String model = (provider != null && provider.model != null && !provider.model.trim().isEmpty())
+                            ? provider.model.trim()
+                            : config.getModel();
+
+                    String endpoint = baseUrl;
+                    while (endpoint.endsWith("/")) {
+                        endpoint = endpoint.substring(0, endpoint.length() - 1);
+                    }
+                    if (!endpoint.endsWith("/chat/completions")) {
+                        endpoint += "/chat/completions";
+                    }
+
+                    URL url = new URL(endpoint);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Content-Type", "application/json");
+                    if (apiKey != null && !apiKey.isEmpty()) {
+                        conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+                    }
+                    conn.setDoOutput(true);
+                    conn.setConnectTimeout(15000);
+                    conn.setReadTimeout(120000);
+
+                    JSONObject body = new JSONObject();
+                    body.put("model", model);
+                    body.put("stream", true);
+                    body.put("enable_thinking", config.isEnableThinking());
+                    body.put("reasoning_effort", config.getReasoningEffort());
+                    body.put("tools", getAvailableTools());
+                    body.put("tool_choice", "auto");
+
+                    JSONArray messages = new JSONArray();
+                    synchronized (history) {
+                        for (JSONObject m : history) messages.put(m);
+                    }
+                    body.put("messages", messages);
+
+                    try (OutputStream os = conn.getOutputStream()) {
+                        os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                    }
+
+                    int code = conn.getResponseCode();
+                    if (code != 200) {
+                        String err = "Upstream returned HTTP " + code;
+                        sendAgentEvent(out, new JSONObject()
+                                .put("event_type", "agent_error")
+                                .put("message", err)
+                                .put("is_fatal", false));
+                        sendAgentEvent(out, new JSONObject().put("event_type", "turn_end"));
+                        break;
+                    }
+
+                    StringBuilder reasoningBuilder = new StringBuilder();
+                    StringBuilder contentBuilder = new StringBuilder();
+                    Map<Integer, ToolCallBuilder> toolCallMap = new LinkedHashMap<>();
+
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
                         String line;
                         while ((line = reader.readLine()) != null) {
+                            if (cancelledSessions.contains(sessionId)) break;
                             line = line.trim();
                             if (line.isEmpty()) continue;
                             if (line.startsWith("data: ")) {
                                 String data = line.substring(6).trim();
-                                if ("[DONE]".equals(data)) {
-                                    synchronized (history) {
-                                        history.add(userMsg);
-                                        history.add(new JSONObject().put("role", "assistant").put("content", assistantText.toString()));
-                                        while (history.size() > 20) history.remove(0);
-                                    }
-                                    JSONObject turnEnd = new JSONObject()
-                                            .put("v", 1)
-                                            .put("type", "event")
-                                            .put("ts", System.currentTimeMillis())
-                                            .put("payload", new JSONObject().put("event_type", "turn_end"));
-                                    sendWsTextFrame(out, turnEnd.toString());
-                                    break;
-                                }
+                                if ("[DONE]".equals(data)) break;
+
                                 try {
                                     JSONObject chunk = new JSONObject(data);
                                     JSONArray choices = chunk.optJSONArray("choices");
                                     if (choices != null && choices.length() > 0) {
                                         JSONObject delta = choices.getJSONObject(0).optJSONObject("delta");
                                         if (delta != null) {
-                                            String reasoning = delta.optString("reasoning_content", "");
-                                            if (!reasoning.isEmpty()) {
-                                                JSONObject rEvent = new JSONObject()
-                                                        .put("v", 1)
-                                                        .put("type", "event")
-                                                        .put("ts", System.currentTimeMillis())
-                                                        .put("payload", new JSONObject()
-                                                                .put("event_type", "reasoning_chunk")
-                                                                .put("content", reasoning));
-                                                sendWsTextFrame(out, rEvent.toString());
+                                            String r = delta.optString("reasoning_content", "");
+                                            if (!r.isEmpty()) {
+                                                reasoningBuilder.append(r);
+                                                sendAgentEvent(out, new JSONObject()
+                                                        .put("event_type", "reasoning_chunk")
+                                                        .put("content", r));
                                             }
 
-                                            String content = delta.optString("content", "");
-                                            if (!content.isEmpty()) {
-                                                assistantText.append(content);
-                                                JSONObject tEvent = new JSONObject()
-                                                        .put("v", 1)
-                                                        .put("type", "event")
-                                                        .put("ts", System.currentTimeMillis())
-                                                        .put("payload", new JSONObject()
-                                                                .put("event_type", "text_chunk")
-                                                                .put("content", content));
-                                                sendWsTextFrame(out, tEvent.toString());
+                                            JSONArray tcArray = delta.optJSONArray("tool_calls");
+                                            if (tcArray != null) {
+                                                for (int i = 0; i < tcArray.length(); i++) {
+                                                    JSONObject tc = tcArray.getJSONObject(i);
+                                                    int idx = tc.optInt("index", toolCallMap.size());
+                                                    ToolCallBuilder tcb = toolCallMap.computeIfAbsent(idx, k -> new ToolCallBuilder());
+                                                    if (tc.has("id")) tcb.id = tc.optString("id");
+                                                    JSONObject fn = tc.optJSONObject("function");
+                                                    if (fn != null) {
+                                                        if (fn.has("name")) tcb.name.append(fn.optString("name"));
+                                                        if (fn.has("arguments")) tcb.arguments.append(fn.optString("arguments"));
+                                                    }
+                                                }
+                                            }
+
+                                            String c = delta.optString("content", "");
+                                            if (!c.isEmpty()) {
+                                                contentBuilder.append(c);
+                                                if (toolCallMap.isEmpty() && !contentBuilder.toString().contains("<|XYML|") && !contentBuilder.toString().contains("<tool_call")) {
+                                                    sendAgentEvent(out, new JSONObject()
+                                                            .put("event_type", "text_chunk")
+                                                            .put("content", c));
+                                                }
                                             }
                                         }
                                     }
@@ -567,45 +711,649 @@ public final class WebStudioServer {
                             }
                         }
                     }
-                } else {
-                    String err = "Upstream returned HTTP " + code;
-                    JSONObject errEvent = new JSONObject()
-                            .put("v", 1)
-                            .put("type", "event")
-                            .put("ts", System.currentTimeMillis())
-                            .put("payload", new JSONObject()
-                                    .put("event_type", "agent_error")
-                                    .put("message", err)
-                                    .put("is_fatal", false));
-                    sendWsTextFrame(out, errEvent.toString());
-                    JSONObject turnEnd = new JSONObject()
-                            .put("v", 1)
-                            .put("type", "event")
-                            .put("ts", System.currentTimeMillis())
-                            .put("payload", new JSONObject().put("event_type", "turn_end"));
-                    sendWsTextFrame(out, turnEnd.toString());
+
+                    if (cancelledSessions.contains(sessionId)) {
+                        sendAgentEvent(out, new JSONObject().put("event_type", "agent_cancelled"));
+                        break;
+                    }
+
+                    // Parse tool calls (Native or XYML/XML fallback)
+                    List<ToolCall> calls = new ArrayList<>();
+                    if (!toolCallMap.isEmpty()) {
+                        for (ToolCallBuilder tcb : toolCallMap.values()) {
+                            String name = tcb.name.toString().trim();
+                            if (!name.isEmpty()) {
+                                String id = (tcb.id != null && !tcb.id.isEmpty()) ? tcb.id : ("call_" + System.currentTimeMillis() + "_" + calls.size());
+                                calls.add(new ToolCall(id, name, parseArguments(tcb.arguments.toString())));
+                            }
+                        }
+                    } else {
+                        JSONArray parsedXml = ToolForge.parseToolCalls(contentBuilder.toString(), getAvailableTools());
+                        if (parsedXml != null && parsedXml.length() > 0) {
+                            for (int i = 0; i < parsedXml.length(); i++) {
+                                JSONObject c = parsedXml.getJSONObject(i);
+                                JSONObject fn = c.optJSONObject("function");
+                                String name = fn != null ? fn.optString("name") : c.optString("name");
+                                Object argsObj = fn != null ? fn.opt("arguments") : c.opt("arguments");
+                                String id = c.optString("id", "call_" + System.currentTimeMillis() + "_" + i);
+                                calls.add(new ToolCall(id, name, parseArguments(argsObj)));
+                            }
+                        }
+                    }
+
+                    if (calls.isEmpty()) {
+                        // No tool call in this round -> conversation turn finished
+                        String cleanContent = ToolForge.stripProtocolMarkup(contentBuilder.toString());
+                        if (contentBuilder.toString().contains("<|XYML|") || contentBuilder.toString().contains("<tool_call")) {
+                            if (!cleanContent.isEmpty()) {
+                                sendAgentEvent(out, new JSONObject()
+                                        .put("event_type", "text_chunk")
+                                        .put("content", cleanContent));
+                            }
+                        }
+                        synchronized (history) {
+                            history.add(new JSONObject().put("role", "assistant").put("content", cleanContent));
+                            while (history.size() > 30) history.remove(0);
+                        }
+                        sendAgentEvent(out, new JSONObject().put("event_type", "turn_end"));
+                        sendUsageUpdate(out, history.size());
+                        break;
+                    } else {
+                        // Tools were called!
+                        String rawContent = contentBuilder.toString();
+                        String cleanContent = ToolForge.stripProtocolMarkup(rawContent);
+
+                        JSONObject assistantMsg = new JSONObject();
+                        assistantMsg.put("role", "assistant");
+                        assistantMsg.put("content", cleanContent.isEmpty() ? JSONObject.NULL : cleanContent);
+                        JSONArray tcArr = new JSONArray();
+                        for (ToolCall tc : calls) {
+                            tcArr.put(tc.toJson());
+                        }
+                        assistantMsg.put("tool_calls", tcArr);
+                        synchronized (history) {
+                            history.add(assistantMsg);
+                        }
+
+                        for (ToolCall tc : calls) {
+                            if (cancelledSessions.contains(sessionId)) break;
+                            String canonical = canonicalToolName(tc.name);
+                            String uiName = getUiToolName(canonical);
+
+                            // tool_start
+                            sendAgentEvent(out, new JSONObject()
+                                    .put("event_type", "tool_start")
+                                    .put("call_id", tc.id)
+                                    .put("tool_name", uiName)
+                                    .put("arguments", tc.arguments));
+
+                            // tool_running
+                            sendAgentEvent(out, new JSONObject()
+                                    .put("event_type", "tool_running")
+                                    .put("call_id", tc.id)
+                                    .put("tool_name", uiName));
+
+                            // execute tool
+                            long startMs = System.currentTimeMillis();
+                            ToolResult result = executeTool(canonical, tc.arguments, sessionId);
+                            double elapsed = (System.currentTimeMillis() - startMs) / 1000.0;
+
+                            // tool_done
+                            sendAgentEvent(out, new JSONObject()
+                                    .put("event_type", "tool_done")
+                                    .put("call_id", tc.id)
+                                    .put("tool_name", uiName)
+                                    .put("elapsed", elapsed)
+                                    .put("result_preview", result.output)
+                                    .put("is_error", result.isError));
+
+                            // add tool result to history
+                            JSONObject toolMsg = new JSONObject();
+                            toolMsg.put("role", "tool");
+                            toolMsg.put("tool_call_id", tc.id);
+                            toolMsg.put("name", canonical);
+                            toolMsg.put("content", result.output);
+                            synchronized (history) {
+                                history.add(toolMsg);
+                            }
+                        }
+
+                        if (cancelledSessions.contains(sessionId)) {
+                            sendAgentEvent(out, new JSONObject().put("event_type", "agent_cancelled"));
+                            break;
+                        }
+
+                        // Loop back to next round to get LLM response after tool execution
+                    }
                 }
             } catch (Exception e) {
                 logger.onLog("WS", "Error in AI turn: " + e.getMessage());
                 try {
-                    JSONObject errEvent = new JSONObject()
-                            .put("v", 1)
-                            .put("type", "event")
-                            .put("ts", System.currentTimeMillis())
-                            .put("payload", new JSONObject()
-                                    .put("event_type", "agent_error")
-                                    .put("message", "执行错误: " + e.getMessage())
-                                    .put("is_fatal", false));
-                    sendWsTextFrame(out, errEvent.toString());
-                    JSONObject turnEnd = new JSONObject()
-                            .put("v", 1)
-                            .put("type", "event")
-                            .put("ts", System.currentTimeMillis())
-                            .put("payload", new JSONObject().put("event_type", "turn_end"));
-                    sendWsTextFrame(out, turnEnd.toString());
+                    sendAgentEvent(out, new JSONObject()
+                            .put("event_type", "agent_error")
+                            .put("message", "执行错误: " + e.getMessage())
+                            .put("is_fatal", false));
+                    sendAgentEvent(out, new JSONObject().put("event_type", "turn_end"));
                 } catch (Exception ignored) {}
             }
         });
+    }
+
+    private static JSONObject parseArguments(Object argsObj) {
+        if (argsObj instanceof JSONObject) {
+            return (JSONObject) argsObj;
+        }
+        if (argsObj instanceof String) {
+            String s = ((String) argsObj).trim();
+            if (s.startsWith("{")) {
+                try {
+                    return new JSONObject(s);
+                } catch (Exception ignored) {}
+            }
+            JSONObject res = new JSONObject();
+            try {
+                res.put("command", s);
+            } catch (Exception ignored) {}
+            return res;
+        }
+        return new JSONObject();
+    }
+
+    public static String canonicalToolName(String name) {
+        if (name == null) return "shell";
+        String n = name.trim().toLowerCase();
+        switch (n) {
+            case "bash":
+            case "sh":
+            case "terminal":
+            case "command":
+            case "exec":
+            case "run":
+            case "local_shell":
+                return "shell";
+            case "read":
+            case "cat":
+            case "view":
+            case "read_file":
+                return "read_file";
+            case "write":
+            case "write_file":
+                return "write_file";
+            case "edit":
+            case "replace":
+            case "patch":
+            case "apply_patch":
+            case "edit_file":
+                return "edit_file";
+            case "ls":
+            case "dir":
+            case "list":
+            case "ll":
+            case "list_dir":
+                return "list_dir";
+            case "grep":
+            case "search":
+            case "grep_files":
+                return "grep_files";
+            case "web":
+            case "websearch":
+            case "web_search":
+                return "web_search";
+            case "browse":
+            case "http":
+            case "webfetch":
+            case "fetch":
+                return "fetch";
+            case "doctor":
+            case "runtime_doctor":
+                return "runtime_doctor";
+            default:
+                return n;
+        }
+    }
+
+    public static String getUiToolName(String canonical) {
+        if (canonical == null) return "bash";
+        switch (canonical) {
+            case "shell": return "bash";
+            case "read_file": return "read";
+            case "write_file": return "write";
+            case "edit_file": return "edit";
+            case "list_dir": return "ls";
+            case "grep_files": return "grep";
+            case "fetch": return "webfetch";
+            case "web_search": return "websearch";
+            default: return canonical;
+        }
+    }
+
+    public static JSONArray getAvailableTools() {
+        JSONArray tools = new JSONArray();
+        try {
+            // 1. shell
+            JSONObject shellTool = new JSONObject();
+            shellTool.put("type", "function");
+            JSONObject shellFn = new JSONObject();
+            shellFn.put("name", "shell");
+            shellFn.put("description", "Run a shell command in the Linux Debian guest environment.");
+            JSONObject shellParams = new JSONObject();
+            shellParams.put("type", "object");
+            JSONObject shellProps = new JSONObject();
+            shellProps.put("command", new JSONObject().put("type", "string").put("description", "The command line string to execute"));
+            shellProps.put("timeout_ms", new JSONObject().put("type", "integer").put("description", "Timeout in milliseconds (optional, default 30000)"));
+            shellParams.put("properties", shellProps);
+            shellParams.put("required", new JSONArray().put("command"));
+            shellFn.put("parameters", shellParams);
+            shellTool.put("function", shellFn);
+            tools.put(shellTool);
+
+            // 2. read_file
+            JSONObject readTool = new JSONObject();
+            readTool.put("type", "function");
+            JSONObject readFn = new JSONObject();
+            readFn.put("name", "read_file");
+            readFn.put("description", "Read contents of a text file from the workspace.");
+            JSONObject readParams = new JSONObject();
+            readParams.put("type", "object");
+            JSONObject readProps = new JSONObject();
+            readProps.put("path", new JSONObject().put("type", "string").put("description", "Target file path"));
+            readProps.put("offset", new JSONObject().put("type", "integer").put("description", "1-based line number to start reading (optional)"));
+            readProps.put("limit", new JSONObject().put("type", "integer").put("description", "Maximum lines to read (optional)"));
+            readParams.put("properties", readProps);
+            readParams.put("required", new JSONArray().put("path"));
+            readFn.put("parameters", readParams);
+            readTool.put("function", readFn);
+            tools.put(readTool);
+
+            // 3. write_file
+            JSONObject writeTool = new JSONObject();
+            writeTool.put("type", "function");
+            JSONObject writeFn = new JSONObject();
+            writeFn.put("name", "write_file");
+            writeFn.put("description", "Create or overwrite a file with UTF-8 text content.");
+            JSONObject writeParams = new JSONObject();
+            writeParams.put("type", "object");
+            JSONObject writeProps = new JSONObject();
+            writeProps.put("path", new JSONObject().put("type", "string").put("description", "Target file path"));
+            writeProps.put("content", new JSONObject().put("type", "string").put("description", "UTF-8 content to write"));
+            writeParams.put("properties", writeProps);
+            writeParams.put("required", new JSONArray().put("path").put("content"));
+            writeFn.put("parameters", writeParams);
+            writeTool.put("function", writeFn);
+            tools.put(writeTool);
+
+            // 4. edit_file
+            JSONObject editTool = new JSONObject();
+            editTool.put("type", "function");
+            JSONObject editFn = new JSONObject();
+            editFn.put("name", "edit_file");
+            editFn.put("description", "Replace exact text fragment in a file with replacement content.");
+            JSONObject editParams = new JSONObject();
+            editParams.put("type", "object");
+            JSONObject editProps = new JSONObject();
+            editProps.put("path", new JSONObject().put("type", "string").put("description", "Target file path"));
+            editProps.put("old_string", new JSONObject().put("type", "string").put("description", "Exact text to replace"));
+            editProps.put("new_string", new JSONObject().put("type", "string").put("description", "Replacement text"));
+            editProps.put("replace_all", new JSONObject().put("type", "boolean").put("description", "Whether to replace all occurrences"));
+            editParams.put("properties", editProps);
+            editParams.put("required", new JSONArray().put("path").put("old_string").put("new_string"));
+            editFn.put("parameters", editParams);
+            editTool.put("function", editFn);
+            tools.put(editTool);
+
+            // 5. list_dir
+            JSONObject listTool = new JSONObject();
+            listTool.put("type", "function");
+            JSONObject listFn = new JSONObject();
+            listFn.put("name", "list_dir");
+            listFn.put("description", "List files and subdirectories in a directory path.");
+            JSONObject listParams = new JSONObject();
+            listParams.put("type", "object");
+            JSONObject listProps = new JSONObject();
+            listProps.put("path", new JSONObject().put("type", "string").put("description", "Directory path (default current working directory)"));
+            listProps.put("depth", new JSONObject().put("type", "integer").put("description", "Max directory depth (default 1)"));
+            listParams.put("properties", listProps);
+            listFn.put("parameters", listParams);
+            listTool.put("function", listFn);
+            tools.put(listTool);
+
+            // 6. grep_files
+            JSONObject grepTool = new JSONObject();
+            grepTool.put("type", "function");
+            JSONObject grepFn = new JSONObject();
+            grepFn.put("name", "grep_files");
+            grepFn.put("description", "Search text pattern or regex in workspace files.");
+            JSONObject grepParams = new JSONObject();
+            grepParams.put("type", "object");
+            JSONObject grepProps = new JSONObject();
+            grepProps.put("query", new JSONObject().put("type", "string").put("description", "Search query or regex"));
+            grepProps.put("path", new JSONObject().put("type", "string").put("description", "Directory or file to search"));
+            grepProps.put("max_results", new JSONObject().put("type", "integer").put("description", "Max results to return (default 50)"));
+            grepParams.put("properties", grepProps);
+            grepParams.put("required", new JSONArray().put("query"));
+            grepFn.put("parameters", grepParams);
+            grepTool.put("function", grepFn);
+            tools.put(grepTool);
+
+            // 7. web_search
+            JSONObject searchTool = new JSONObject();
+            searchTool.put("type", "function");
+            JSONObject searchFn = new JSONObject();
+            searchFn.put("name", "web_search");
+            searchFn.put("description", "Search the web for up-to-date documentation and information.");
+            JSONObject searchParams = new JSONObject();
+            searchParams.put("type", "object");
+            JSONObject searchProps = new JSONObject();
+            searchProps.put("query", new JSONObject().put("type", "string").put("description", "Search keywords"));
+            searchParams.put("properties", searchProps);
+            searchParams.put("required", new JSONArray().put("query"));
+            searchFn.put("parameters", searchParams);
+            searchTool.put("function", searchFn);
+            tools.put(searchTool);
+
+            // 8. fetch
+            JSONObject fetchTool = new JSONObject();
+            fetchTool.put("type", "function");
+            JSONObject fetchFn = new JSONObject();
+            fetchFn.put("name", "fetch");
+            fetchFn.put("description", "Fetch and extract text content from a web URL.");
+            JSONObject fetchParams = new JSONObject();
+            fetchParams.put("type", "object");
+            JSONObject fetchProps = new JSONObject();
+            fetchProps.put("url", new JSONObject().put("type", "string").put("description", "URL to fetch"));
+            fetchParams.put("properties", fetchProps);
+            fetchParams.put("required", new JSONArray().put("url"));
+            fetchFn.put("parameters", fetchProps);
+            fetchTool.put("function", fetchFn);
+            tools.put(fetchTool);
+
+            // 9. runtime_doctor
+            JSONObject docTool = new JSONObject();
+            docTool.put("type", "function");
+            JSONObject docFn = new JSONObject();
+            docFn.put("name", "runtime_doctor");
+            docFn.put("description", "Report environment health and Debian PRoot facts.");
+            docFn.put("parameters", new JSONObject().put("type", "object").put("properties", new JSONObject()));
+            docTool.put("function", docFn);
+            tools.put(docTool);
+        } catch (Exception ignored) {}
+        return tools;
+    }
+
+    public File resolvePath(String pathStr, String sessionId) {
+        if (pathStr == null || pathStr.trim().isEmpty()) {
+            pathStr = getSessionCwd(sessionId);
+        }
+        pathStr = pathStr.trim();
+        if (!pathStr.startsWith("/")) {
+            String base = getSessionCwd(sessionId);
+            if (!base.endsWith("/")) base += "/";
+            pathStr = base + pathStr;
+        }
+        if (rootfsDir != null && rootfsDir.exists()) {
+            if (pathStr.startsWith("/storage") || pathStr.startsWith("/sdcard")) {
+                return new File(pathStr);
+            }
+            return new File(rootfsDir, pathStr.substring(1));
+        }
+        return new File(pathStr);
+    }
+
+    public ToolResult executeTool(String canonical, JSONObject args, String sessionId) {
+        try {
+            switch (canonical) {
+                case "shell": {
+                    String cmd = args.optString("command", args.optString("cmd", "")).trim();
+                    if (cmd.isEmpty()) return new ToolResult("Error: Missing command argument", true);
+                    int timeoutMs = args.optInt("timeout_ms", 30000);
+                    String cwd = getSessionCwd(sessionId);
+                    String out;
+                    if (shellRunner != null) {
+                        out = shellRunner.run(cmd, cwd, timeoutMs);
+                    } else {
+                        out = executeHostProcess(cmd, cwd, timeoutMs);
+                    }
+                    return new ToolResult(out, false);
+                }
+                case "read_file": {
+                    String path = args.optString("path", args.optString("file_path", "")).trim();
+                    if (path.isEmpty()) return new ToolResult("Error: Missing path argument", true);
+                    int offset = args.optInt("offset", 1);
+                    int limit = args.optInt("limit", 2000);
+                    File file = resolvePath(path, sessionId);
+                    if (!file.exists()) return new ToolResult("Error: File not found: " + path, true);
+                    if (file.isDirectory()) return new ToolResult("Error: " + path + " is a directory, use list_dir instead", true);
+                    List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
+                    int start = Math.max(1, offset) - 1;
+                    int end = limit > 0 ? Math.min(lines.size(), start + limit) : lines.size();
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = start; i < end; i++) {
+                        sb.append(String.format("%4d | %s\n", i + 1, lines.get(i)));
+                    }
+                    return new ToolResult(sb.toString(), false);
+                }
+                case "write_file": {
+                    String path = args.optString("path", args.optString("file_path", "")).trim();
+                    if (path.isEmpty()) return new ToolResult("Error: Missing path argument", true);
+                    String content = args.optString("content", "");
+                    File file = resolvePath(path, sessionId);
+                    if (file.getParentFile() != null) file.getParentFile().mkdirs();
+                    byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+                    Files.write(file.toPath(), bytes);
+                    return new ToolResult("Successfully wrote " + bytes.length + " bytes to " + path, false);
+                }
+                case "edit_file": {
+                    String path = args.optString("path", args.optString("file_path", "")).trim();
+                    String oldStr = args.optString("old_string", "");
+                    String newStr = args.optString("new_string", "");
+                    boolean replaceAll = args.optBoolean("replace_all", false);
+                    if (path.isEmpty() || oldStr.isEmpty()) {
+                        return new ToolResult("Error: Missing path or old_string argument", true);
+                    }
+                    File file = resolvePath(path, sessionId);
+                    if (!file.exists()) return new ToolResult("Error: File not found: " + path, true);
+                    String text = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+                    if (!text.contains(oldStr)) {
+                        return new ToolResult("Error: old_string not found in " + path, true);
+                    }
+                    String replaced = replaceAll ? text.replace(oldStr, newStr) : text.replaceFirst(Pattern.quote(oldStr), Matcher.quoteReplacement(newStr));
+                    Files.write(file.toPath(), replaced.getBytes(StandardCharsets.UTF_8));
+                    return new ToolResult("Successfully edited " + path, false);
+                }
+                case "list_dir": {
+                    String path = args.optString("path", getSessionCwd(sessionId)).trim();
+                    File dir = resolvePath(path, sessionId);
+                    if (!dir.exists()) return new ToolResult("Error: Directory not found: " + path, true);
+                    if (!dir.isDirectory()) return new ToolResult("Error: " + path + " is not a directory", true);
+                    File[] children = dir.listFiles();
+                    if (children == null || children.length == 0) return new ToolResult("(Directory is empty)", false);
+                    StringBuilder sb = new StringBuilder();
+                    for (File f : children) {
+                        sb.append(f.isDirectory() ? "[DIR]  " : "[FILE] ");
+                        sb.append(String.format("%10s  ", f.isDirectory() ? "-" : formatSize(f.length())));
+                        sb.append(f.getName()).append("\n");
+                    }
+                    return new ToolResult(sb.toString(), false);
+                }
+                case "grep_files": {
+                    String query = args.optString("query", "").trim();
+                    if (query.isEmpty()) return new ToolResult("Error: Missing query argument", true);
+                    String path = args.optString("path", getSessionCwd(sessionId)).trim();
+                    File root = resolvePath(path, sessionId);
+                    if (!root.exists()) return new ToolResult("Error: Path not found: " + path, true);
+                    int maxResults = args.optInt("max_results", 50);
+                    StringBuilder sb = new StringBuilder();
+                    int count = grepRecursive(root, query, sb, maxResults);
+                    if (count == 0) return new ToolResult("No matches found for: " + query, false);
+                    return new ToolResult(sb.toString(), false);
+                }
+                case "web_search": {
+                    String q = args.optString("query", "").trim();
+                    if (q.isEmpty()) return new ToolResult("Error: Missing query argument", true);
+                    return new ToolResult(performWebSearch(q), false);
+                }
+                case "fetch": {
+                    String url = args.optString("url", "").trim();
+                    if (url.isEmpty()) return new ToolResult("Error: Missing url argument", true);
+                    return new ToolResult(performHttpFetch(url), false);
+                }
+                case "runtime_doctor": {
+                    JSONObject doc = new JSONObject();
+                    doc.put("status", "ready");
+                    doc.put("os", System.getProperty("os.name"));
+                    doc.put("arch", System.getProperty("os.arch"));
+                    doc.put("backend", "proot_linux");
+                    doc.put("distro", "Debian 12 Bookworm");
+                    doc.put("cwd", getSessionCwd(sessionId));
+                    doc.put("rootfs_mounted", rootfsDir != null && rootfsDir.exists());
+                    return new ToolResult(doc.toString(2), false);
+                }
+                default:
+                    return new ToolResult("Error: Unknown tool '" + canonical + "'", true);
+            }
+        } catch (Exception e) {
+            return new ToolResult("Error executing " + canonical + ": " + e.getMessage(), true);
+        }
+    }
+
+    private String executeHostProcess(String command, String cwd, int timeoutMs) {
+        try {
+            ProcessBuilder pb;
+            if (new File("/bin/bash").exists()) {
+                pb = new ProcessBuilder("/bin/bash", "-c", command);
+            } else if (new File("/bin/sh").exists()) {
+                pb = new ProcessBuilder("/bin/sh", "-c", command);
+            } else {
+                pb = new ProcessBuilder("/system/bin/sh", "-c", command);
+            }
+            File dir = resolvePath(cwd, null);
+            if (dir.isDirectory()) pb.directory(dir);
+            pb.redirectErrorStream(true);
+            Process proc = pb.start();
+
+            StringBuilder sb = new StringBuilder();
+            long deadline = System.currentTimeMillis() + (timeoutMs > 0 ? timeoutMs : 30000);
+            InputStream is = proc.getInputStream();
+            byte[] buf = new byte[2048];
+            while (System.currentTimeMillis() < deadline) {
+                int avail = is.available();
+                if (avail > 0) {
+                    int r = is.read(buf, 0, Math.min(avail, buf.length));
+                    if (r > 0) sb.append(new String(buf, 0, r, StandardCharsets.UTF_8));
+                } else {
+                    try {
+                        int exit = proc.exitValue();
+                        while (is.available() > 0) {
+                            int r = is.read(buf);
+                            if (r > 0) sb.append(new String(buf, 0, r, StandardCharsets.UTF_8));
+                        }
+                        String out = sb.toString().trim();
+                        return out.isEmpty() ? "(Exit code " + exit + ")" : out;
+                    } catch (IllegalThreadStateException running) {
+                        Thread.sleep(40);
+                    }
+                }
+            }
+            proc.destroy();
+            return sb.toString().trim() + "\n(Command timed out after " + (timeoutMs / 1000) + "s)";
+        } catch (Exception e) {
+            return "Process execution failed: " + e.getMessage();
+        }
+    }
+
+    private String performWebSearch(String query) {
+        try {
+            String u = "https://html.duckduckgo.com/html/?q=" + java.net.URLEncoder.encode(query, "UTF-8");
+            URL url = new URL(u);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile)");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(10000);
+            if (conn.getResponseCode() == 200) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                byte[] b = new byte[1024];
+                int n;
+                InputStream is = conn.getInputStream();
+                while ((n = is.read(b)) != -1 && baos.size() < 64000) baos.write(b, 0, n);
+                String html = baos.toString("UTF-8");
+                Matcher m = Pattern.compile("(?is)<a class=\"result__snippet[^>]*>(.*?)</a>").matcher(html);
+                StringBuilder sb = new StringBuilder();
+                int count = 0;
+                while (m.find() && count < 5) {
+                    count++;
+                    String snippet = m.group(1).replaceAll("<[^>]+>", "").trim();
+                    if (!snippet.isEmpty()) sb.append(count).append(". ").append(snippet).append("\n\n");
+                }
+                if (sb.length() > 0) return sb.toString().trim();
+            }
+        } catch (Exception ignored) {}
+        return "Web search query executed for '" + query + "'. (No external search hits reachable or network restricted)";
+    }
+
+    private String performHttpFetch(String urlStr) {
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile)");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(10000);
+            int code = conn.getResponseCode();
+            if (code >= 200 && code < 300) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                byte[] b = new byte[1024];
+                int n;
+                InputStream is = conn.getInputStream();
+                while ((n = is.read(b)) != -1 && baos.size() < 64000) baos.write(b, 0, n);
+                String raw = baos.toString("UTF-8");
+                String text = raw.replaceAll("(?is)<script.*?</script>", "")
+                        .replaceAll("(?is)<style.*?</style>", "")
+                        .replaceAll("<[^>]+>", " ")
+                        .replaceAll("\\s+", " ")
+                        .trim();
+                if (text.length() > 2000) text = text.substring(0, 2000) + "... (truncated)";
+                return text;
+            } else {
+                return "HTTP Error " + code;
+            }
+        } catch (Exception e) {
+            return "Fetch failed: " + e.getMessage();
+        }
+    }
+
+    private int grepRecursive(File dir, String query, StringBuilder sb, int maxResults) {
+        int count = 0;
+        File[] files = dir.listFiles();
+        if (files == null) return 0;
+        for (File f : files) {
+            if (count >= maxResults) break;
+            if (f.isDirectory()) {
+                if (!f.getName().startsWith(".") && !f.getName().equals("node_modules")) {
+                    count += grepRecursive(f, query, sb, maxResults - count);
+                }
+            } else if (f.isFile() && f.length() < 1024 * 1024) {
+                try {
+                    List<String> lines = Files.readAllLines(f.toPath(), StandardCharsets.UTF_8);
+                    for (int i = 0; i < lines.size(); i++) {
+                        String line = lines.get(i);
+                        if (line.contains(query)) {
+                            count++;
+                            sb.append(f.getPath()).append(":").append(i + 1).append(": ").append(line.trim()).append("\n");
+                            if (count >= maxResults) break;
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+        return count;
+    }
+
+    private static String formatSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(1024));
+        char pre = "KMGTPE".charAt(exp - 1);
+        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
     }
 
     private static String parseSessionId(String path) {
@@ -1034,6 +1782,18 @@ public final class WebStudioServer {
 
         if (path.startsWith("/api/sessions/")) {
             String sub = path.substring("/api/sessions/".length());
+            if (sub.endsWith("/cwd")) {
+                String id = sub.substring(0, sub.length() - "/cwd".length());
+                if ("POST".equals(method) || "PUT".equals(method)) {
+                    JSONObject b = req.getJsonBody();
+                    String newCwd = b.optString("cwd", "/root");
+                    setSessionCwd(id, newCwd);
+                    writeJson(out, 200, new JSONObject().put("ok", true).put("cwd", newCwd));
+                } else {
+                    writeJson(out, 200, new JSONObject().put("cwd", getSessionCwd(id)));
+                }
+                return;
+            }
             if (sub.endsWith("/clear") && "POST".equals(method)) {
                 String id = sub.substring(0, sub.length() - "/clear".length());
                 sessionHistories.remove(id);
@@ -1048,7 +1808,7 @@ public final class WebStudioServer {
             JSONObject sessionMeta = new JSONObject()
                     .put("id", sub)
                     .put("title", "iFlow Session")
-                    .put("cwd", "/root");
+                    .put("cwd", getSessionCwd(sub));
             writeJson(out, 200, sessionMeta);
             return;
         }
@@ -1056,7 +1816,7 @@ public final class WebStudioServer {
         if ("/api/fs/list".equals(path)) {
             String dirPath = req.getQueryParam("path");
             if (dirPath == null || dirPath.isEmpty()) dirPath = "/root";
-            File dir = new File(dirPath);
+            File dir = resolvePath(dirPath, null);
             JSONArray entries = new JSONArray();
             if (dir.exists() && dir.isDirectory()) {
                 File[] list = dir.listFiles();
@@ -1081,7 +1841,7 @@ public final class WebStudioServer {
         if ("/api/fs/raw".equals(path)) {
             String filePath = req.getQueryParam("path");
             if (filePath != null) {
-                File file = new File(filePath);
+                File file = resolvePath(filePath, null);
                 if (file.exists() && file.isFile()) {
                     byte[] bytes = readFileBytes(file);
                     writeResponse(out, 200, "text/plain; charset=utf-8", bytes);

@@ -36,6 +36,8 @@ import com.android.proot.sample.ui.dialog.WorkspaceDialog;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
+import java.io.File;
+import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -323,6 +325,7 @@ public class MainActivity extends Activity {
     private void showWorkspacesDialog() {
         WorkspaceDialog.show(this, engine.getRootfsDir(), path -> {
             updateUiTexts();
+            com.android.proot.proxy.CnbProxyServer.getInstance().setCwd(path);
             if (sessionManager.getCurrentSession() != null && sessionManager.getCurrentSession().isRunning()) {
                 terminalBridge.sendString(sessionManager.getCurrentSession(), WorkspaceManager.buildSafeCdCommand(path));
             } else {
@@ -555,12 +558,69 @@ public class MainActivity extends Activity {
             }
         });
 
-        com.android.proot.proxy.CnbProxyServer.getInstance().setProviderChangeListener((id, baseUrl, apiKey, model) -> {
+        com.android.proot.proxy.CnbProxyServer proxy = com.android.proot.proxy.CnbProxyServer.getInstance();
+        proxy.setRootfsDir(engine.getRootfsDir());
+        String activeWs = workspaceManager != null ? workspaceManager.getActiveWorkspace() : "/root";
+        proxy.setCwd(activeWs);
+        proxy.setShellRunner((command, cwd, timeoutMs) -> executeCommandInPRoot(command, cwd, timeoutMs));
+
+        proxy.setProviderChangeListener((id, baseUrl, apiKey, model) -> {
             runOnUiThread(() -> {
                 configManager.saveConfig(baseUrl, apiKey, model, configManager.isAutoApprove(), engine.getRootfsDir());
                 updateUiTexts();
             });
         });
+    }
+
+    private String executeCommandInPRoot(String command, String cwd, int timeoutMs) throws Exception {
+        if (engine == null || !engine.isInitialized()) {
+            return "PRoot engine is not initialized.";
+        }
+        String workDir = (cwd != null && !cwd.isEmpty()) ? cwd : "/root";
+        File rootfs = engine.getRootfsDir();
+        String sh = (rootfs != null && new File(rootfs, "bin/bash").exists()) ? "/bin/bash" : "/bin/sh";
+        com.android.proot.PRootConfig config = new com.android.proot.PRootConfig.Builder()
+                .setExecutable(sh)
+                .addArgs("-c", command)
+                .setWorkDir(workDir)
+                .setFakeRoot(true)
+                .build();
+        com.android.proot.PRootProcess proc = engine.launch(config);
+        return drainProcessWithTimeout(proc, timeoutMs);
+    }
+
+    private String drainProcessWithTimeout(com.android.proot.PRootProcess proc, int timeoutMs) {
+        long deadline = System.currentTimeMillis() + (timeoutMs > 0 ? timeoutMs : 30000);
+        StringBuilder sb = new StringBuilder();
+        InputStream is = proc.getInputStream();
+        byte[] buf = new byte[2048];
+        try {
+            while (System.currentTimeMillis() < deadline) {
+                int avail = is.available();
+                if (avail > 0) {
+                    int n = is.read(buf, 0, Math.min(avail, buf.length));
+                    if (n > 0) {
+                        sb.append(new String(buf, 0, n, java.nio.charset.StandardCharsets.UTF_8));
+                    }
+                } else {
+                    try {
+                        int exit = proc.exitValue();
+                        while (is.available() > 0) {
+                            int r = is.read(buf);
+                            if (r > 0) sb.append(new String(buf, 0, r, java.nio.charset.StandardCharsets.UTF_8));
+                        }
+                        String out = sb.toString().trim();
+                        return out.isEmpty() ? "(Exit code " + exit + ")" : out;
+                    } catch (IllegalThreadStateException running) {
+                        Thread.sleep(40);
+                    }
+                }
+            }
+            proc.destroy();
+            return sb.toString().trim() + "\n(Command timed out after " + (timeoutMs / 1000) + "s)";
+        } catch (Exception e) {
+            return sb.toString().trim() + "\n(Execution error: " + e.getMessage() + ")";
+        }
     }
 
     private void toggleDualMode() {

@@ -2,6 +2,7 @@ package com.android.proot.proxy;
 
 import org.json.JSONArray;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.text.SimpleDateFormat;
@@ -33,6 +34,9 @@ public final class CnbProxyServer {
     private WebStudioServer webServer;
     private ProxyConfig config;
     private WebStudioServer.ProviderChangeListener providerChangeListener;
+    private WebStudioServer.ShellRunner shellRunner;
+    private File rootfsDir;
+    private String cwd;
     private final List<StateListener> stateListeners = new CopyOnWriteArrayList<>();
     private final List<ProxyLogListener> logListeners = new CopyOnWriteArrayList<>();
     private final LinkedList<String> logBuffer = new LinkedList<>();
@@ -95,6 +99,27 @@ public final class CnbProxyServer {
         this.providerChangeListener = listener;
         if (webServer != null) {
             webServer.setProviderChangeListener(listener);
+        }
+    }
+
+    public synchronized void setShellRunner(WebStudioServer.ShellRunner runner) {
+        this.shellRunner = runner;
+        if (webServer != null) {
+            webServer.setShellRunner(runner);
+        }
+    }
+
+    public synchronized void setRootfsDir(File rootfsDir) {
+        this.rootfsDir = rootfsDir;
+        if (webServer != null) {
+            webServer.setRootfsDir(rootfsDir);
+        }
+    }
+
+    public synchronized void setCwd(String cwd) {
+        this.cwd = cwd;
+        if (webServer != null) {
+            webServer.setCwd(cwd);
         }
     }
 
@@ -229,6 +254,15 @@ public final class CnbProxyServer {
                         this.webServer = new WebStudioServer(webCfg, this::dispatchLog);
                         if (providerChangeListener != null) {
                             this.webServer.setProviderChangeListener(providerChangeListener);
+                        }
+                        if (shellRunner != null) {
+                            this.webServer.setShellRunner(shellRunner);
+                        }
+                        if (rootfsDir != null) {
+                            this.webServer.setRootfsDir(rootfsDir);
+                        }
+                        if (cwd != null) {
+                            this.webServer.setCwd(cwd);
                         }
                     }
                     webServer.start();
