@@ -32,6 +32,7 @@ public final class CnbProxyServer {
     private EmbeddedProxyServer server;
     private WebStudioServer webServer;
     private ProxyConfig config;
+    private WebStudioServer.ProviderChangeListener providerChangeListener;
     private final List<StateListener> stateListeners = new CopyOnWriteArrayList<>();
     private final List<ProxyLogListener> logListeners = new CopyOnWriteArrayList<>();
     private final LinkedList<String> logBuffer = new LinkedList<>();
@@ -88,6 +89,17 @@ public final class CnbProxyServer {
         if (listener != null) {
             stateListeners.add(listener);
         }
+    }
+
+    public synchronized void setProviderChangeListener(WebStudioServer.ProviderChangeListener listener) {
+        this.providerChangeListener = listener;
+        if (webServer != null) {
+            webServer.setProviderChangeListener(listener);
+        }
+    }
+
+    public synchronized WebStudioServer getWebServer() {
+        return webServer;
     }
 
     public synchronized boolean isRunning() {
@@ -215,6 +227,9 @@ public final class CnbProxyServer {
                     ProxyConfig webCfg = webBuilder.build();
                     synchronized (CnbProxyServer.this) {
                         this.webServer = new WebStudioServer(webCfg, this::dispatchLog);
+                        if (providerChangeListener != null) {
+                            this.webServer.setProviderChangeListener(providerChangeListener);
+                        }
                     }
                     webServer.start();
                     dispatchLog("GATEWAY", "Web Studio active at " + getWebUrl());

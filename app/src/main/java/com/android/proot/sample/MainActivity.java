@@ -554,6 +554,13 @@ public class MainActivity extends Activity {
                 return false;
             }
         });
+
+        com.android.proot.proxy.CnbProxyServer.getInstance().setProviderChangeListener((id, baseUrl, apiKey, model) -> {
+            runOnUiThread(() -> {
+                configManager.saveConfig(baseUrl, apiKey, model, configManager.isAutoApprove(), engine.getRootfsDir());
+                updateUiTexts();
+            });
+        });
     }
 
     private void toggleDualMode() {

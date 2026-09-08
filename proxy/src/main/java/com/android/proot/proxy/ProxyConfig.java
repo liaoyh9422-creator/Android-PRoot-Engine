@@ -22,6 +22,7 @@ public class ProxyConfig {
     private final int timeoutMs;
     private final boolean enableThinking;
     private final String reasoningEffort;
+    private final File providersFile;
 
     private ProxyConfig(Builder b) {
         this.listenHost = b.listenHost;
@@ -38,12 +39,14 @@ public class ProxyConfig {
         this.timeoutMs = b.timeoutMs;
         this.enableThinking = b.enableThinking;
         this.reasoningEffort = b.reasoningEffort;
+        this.providersFile = b.providersFile;
     }
 
     public String getListenHost() { return listenHost; }
     public int getPort() { return port; }
     public int getWebPort() { return webPort; }
     public File getWebRoot() { return webRoot; }
+    public File getProvidersFile() { return providersFile; }
     public boolean isEnableWebStudio() { return enableWebStudio; }
     public String getApiKey() { return apiKey; }
     public String getModel() { return model; }
@@ -70,11 +73,13 @@ public class ProxyConfig {
         private int timeoutMs = 15000;
         private boolean enableThinking = true;
         private String reasoningEffort = "high";
+        private File providersFile = null;
 
         public Builder setListenHost(String host) { this.listenHost = host; return this; }
         public Builder setPort(int port) { this.port = port; return this; }
         public Builder setWebPort(int port) { this.webPort = port; return this; }
         public Builder setWebRoot(File root) { this.webRoot = root; return this; }
+        public Builder setProvidersFile(File file) { this.providersFile = file; return this; }
         public Builder setEnableWebStudio(boolean enable) { this.enableWebStudio = enable; return this; }
         public Builder setApiKey(String key) { this.apiKey = key != null ? key : ""; return this; }
         public Builder setModel(String model) { this.model = model != null && !model.isEmpty() ? model : "deepseek-v4-flash"; return this; }
