@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/floating_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- 1. Collapsed Mini Floating Capsule -->
+    <LinearLayout
+        android:id="@+id/layout_mini_capsule"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
+        android:elevation="8dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="80dp"
+        android:layout_marginEnd="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_capsule_status_dot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="● "
+            android:textSize="10sp"
+            android:textColor="#39C5CF" />
+
+        <TextView
+            android:id="@+id/tv_capsule_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CNB :7863 📜"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:typeface="monospace"
+            android:textColor="#E6EDF3" />
+    </LinearLayout>
+
+    <!-- 2. Expanded Floating Log Window -->
+    <LinearLayout
+        android:id="@+id/layout_expanded_window"
+        android:layout_width="320dp"
+        android:layout_height="280dp"
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:elevation="12dp"
+        android:layout_gravity="center"
+        android:visibility="gone">
+
+        <!-- Title / Action Bar -->
+        <LinearLayout
+            android:id="@+id/layout_window_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="6dp">
+
+            <TextView
+                android:id="@+id/tv_window_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="⚡ CNB 代理日志"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#E6EDF3" />
+
+            <TextView
+                android:id="@+id/btn_diag"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🩺 测活"
+                android:textSize="10.5sp"
+                android:layout_marginEnd="4dp" />
+
+            <TextView
+                android:id="@+id/btn_clear"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🗑 清空"
+                android:textSize="10.5sp"
+                android:layout_marginEnd="4dp" />
+
+            <TextView
+                android:id="@+id/btn_min"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="─ 折叠"
+                android:textSize="10.5sp"
+                android:layout_marginEnd="4dp" />
+
+            <TextView
+                android:id="@+id/btn_close"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="✕"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#30363D"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Scrollable Log Content -->
+        <ScrollView
+            android:id="@+id/scroll_log"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:scrollbars="vertical"
+            android:fillViewport="true">
+
+            <TextView
+                android:id="@+id/tv_log_body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:typeface="monospace"
+                android:textSize="9.5sp"
+                android:lineSpacingMultiplier="1.15"
+                android:textColor="#C9D1D9"
+                android:textIsSelectable="true" />
+        </ScrollView>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#30363D"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Footer / Status Bar -->
+        <TextView
+            android:id="@+id/tv_footer_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="● 状态: 就绪 | 端口: 7863"
+            android:textSize="9.5sp"
+            android:typeface="monospace"
+            android:textColor="#8B949E" />
+    </LinearLayout>
+</FrameLayout>

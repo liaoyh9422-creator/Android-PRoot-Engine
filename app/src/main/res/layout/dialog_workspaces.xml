@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dialog_container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Dialog Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tv_dialog_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="📁 工作区管理"
+            android:textColor="#E6EDF3"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/badge_active_workspace"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="/root"
+            android:textSize="11sp"
+            android:layout_marginEnd="10dp" />
+
+        <TextView
+            android:id="@+id/btn_dialog_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✕"
+            android:textColor="#8B949E"
+            android:textSize="18sp"
+            android:padding="4dp" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:maxHeight="420dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Presets Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="预设工作区 (PRESETS)"
+                android:textColor="#8B949E"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="6dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btn_preset_root"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="/root (PRoot)"
+                    android:textSize="11sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/btn_preset_projects"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:layout_marginStart="6dp"
+                    android:text="/sdcard/projects"
+                    android:textSize="11sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/btn_preset_sdcard"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:text="/sdcard"
+                    android:textSize="11sp"
+                    android:gravity="center" />
+            </LinearLayout>
+
+            <!-- Custom Path Input -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="自定义工作区路径 (CUSTOM PATH)"
+                android:textColor="#8B949E"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="6dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <EditText
+                    android:id="@+id/et_custom_workspace"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="/sdcard/projects/my-app"
+                    android:textColor="#E6EDF3"
+                    android:textColorHint="#484F58"
+                    android:textSize="12sp"
+                    android:typeface="monospace"
+                    android:singleLine="true"
+                    android:padding="8dp" />
+
+                <TextView
+                    android:id="@+id/btn_switch_custom"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="切换进入"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <CheckBox
+                android:id="@+id/cb_auto_create_dir"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="若目录不存在则自动创建 (Auto create dir)"
+                android:textColor="#8B949E"
+                android:textSize="11sp"
+                android:checked="true"
+                android:layout_marginTop="4dp" />
+
+            <!-- Recent Workspaces List -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="最近使用 (RECENT WORKSPACES)"
+                android:textColor="#8B949E"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="6dp" />
+
+            <LinearLayout
+                android:id="@+id/layout_recent_workspaces"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

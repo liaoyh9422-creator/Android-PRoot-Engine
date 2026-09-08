@@ -1,0 +1,375 @@
+package com.android.proot.sample;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+
+/**
+ * Pure Java-based internationalization manager for Chinese, English, and Japanese.
+ * Does not rely on Android XML resource localization.
+ */
+public class I18n {
+    public enum Language {
+        ZH_CN("zh", "🇨🇳 简体中文"),
+        EN("en", "🇺🇸 English"),
+        JA("ja", "🇯🇵 日本語");
+
+        private final String code;
+        private final String displayName;
+
+        Language(String code, String displayName) {
+            this.code = code;
+            this.displayName = displayName;
+        }
+
+        public String getCode() { return code; }
+        public String getDisplayName() { return displayName; }
+
+        public static Language fromCode(String code) {
+            for (Language l : values()) {
+                if (l.code.equalsIgnoreCase(code)) return l;
+            }
+            return ZH_CN;
+        }
+    }
+
+    public enum Key {
+        APP_TITLE,
+        STATUS_LABEL_PREFIX,
+        STATUS_UNINITIALIZED,
+        STATUS_INITIALIZING,
+        STATUS_READY,
+        STATUS_INIT_FAILED,
+        STATUS_RUNNING,
+        STATUS_STOPPED,
+        STATUS_IDLE,
+        STATUS_ERROR,
+        BTN_INIT,
+        BTN_RUN_UNAME,
+        BTN_RUN_SCRIPT,
+        BTN_STOP,
+        BTN_CLEAR,
+        BTN_COPY,
+        BTN_EXEC,
+        SECTION_CONTROL,
+        SECTION_TERMINAL,
+        HINT_CUSTOM_CMD,
+        TOAST_LOG_COPIED,
+        BADGE_LINES,
+        CONSOLE_TITLE,
+        LOG_INIT_START,
+        LOG_INIT_SUCCESS,
+        LOG_INIT_FAIL,
+        LOG_STOPPING,
+        LOG_STARTED,
+        LOG_EXITED,
+        LOG_KILLING_TREE,
+        LOG_TREE_KILLED,
+        LOG_NO_PROCESS,
+        LOG_LANG_SWITCHED,
+        BTN_AI_CONFIG,
+        BTN_FULLSCREEN,
+        BTN_EXIT_FULLSCREEN,
+        TITLE_AI_CONFIG,
+        TOAST_CONFIG_SAVED,
+        TOAST_FETCHING_MODELS,
+        TOAST_FETCH_SUCCESS,
+        TOAST_FETCH_FAIL,
+        BTN_SESSIONS,
+        TITLE_SESSIONS,
+        SESSIONS_EMPTY,
+        SESSIONS_EMPTY_DESC,
+        BTN_RESUME,
+        BTN_DELETE,
+        CONFIRM_DELETE_TITLE,
+        CONFIRM_DELETE_SESSION,
+        BTN_RESUME_RECENT,
+        BTN_NEW_SESSION,
+        BTN_REFRESH,
+        BTN_CANCEL,
+        TOAST_SESSION_DELETED,
+        TOAST_SESSION_RESUMED,
+        BADGE_TOTAL_SESSIONS,
+        BTN_PRESET_CNB,
+        STATUS_PROXY_RUNNING,
+        STATUS_PROXY_STOPPED,
+        STATUS_PROXY_STARTING,
+        BTN_FLOATING_LOG,
+        BTN_DIAGNOSTICS,
+        BTN_MINIMIZE,
+        BTN_CLEAR_LOGS,
+        HUB_SECTION_TITLE,
+        HUB_BTN_SESSIONS,
+        HUB_BTN_CONFIG,
+        HUB_BTN_WORKSPACE,
+        HUB_BTN_LOGS
+    }
+
+    private static final Map<Language, Map<Key, String>> STRINGS = new HashMap<>();
+    private static final String PREF_NAME = "proot_ui_prefs";
+    private static final String PREF_LANG = "selected_lang";
+
+    private static Language currentLanguage = Language.ZH_CN;
+
+    static {
+        // --- 1. 简体中文 (ZH_CN) ---
+        Map<Key, String> zh = new HashMap<>();
+        zh.put(Key.APP_TITLE, "Android PRoot 虚拟化引擎");
+        zh.put(Key.STATUS_LABEL_PREFIX, "状态: ");
+        zh.put(Key.STATUS_UNINITIALIZED, "未初始化");
+        zh.put(Key.STATUS_INITIALIZING, "正在初始化环境...");
+        zh.put(Key.STATUS_READY, "已就绪 (可运行)");
+        zh.put(Key.STATUS_INIT_FAILED, "初始化失败");
+        zh.put(Key.STATUS_RUNNING, "正在运行: %s");
+        zh.put(Key.STATUS_STOPPED, "已停止");
+        zh.put(Key.STATUS_IDLE, "空闲 (上次退出码: %d)");
+        zh.put(Key.STATUS_ERROR, "异常: %s");
+        zh.put(Key.BTN_INIT, "初始化引擎");
+        zh.put(Key.BTN_RUN_UNAME, "测试 uname");
+        zh.put(Key.BTN_RUN_SCRIPT, "Shell 终端");
+        zh.put(Key.BTN_STOP, "强杀进程");
+        zh.put(Key.BTN_CLEAR, "清空");
+        zh.put(Key.BTN_COPY, "复制");
+        zh.put(Key.BTN_EXEC, "执行");
+        zh.put(Key.SECTION_CONTROL, "控制面板");
+        zh.put(Key.SECTION_TERMINAL, "终端输出");
+        zh.put(Key.HINT_CUSTOM_CMD, "输入 Linux 命令, 如: uname -a, id, ls -la / ...");
+        zh.put(Key.TOAST_LOG_COPIED, "日志已复制到剪贴板");
+        zh.put(Key.BADGE_LINES, "%d 行");
+        zh.put(Key.CONSOLE_TITLE, "控制台实时日志输出:");
+        zh.put(Key.LOG_INIT_START, "[系统] 正在初始化 PRoot 虚拟化引擎...");
+        zh.put(Key.LOG_INIT_SUCCESS, "[系统] PRoot 引擎初始化成功！");
+        zh.put(Key.LOG_INIT_FAIL, "[错误] PRoot 引擎初始化失败，请查看 logcat。");
+        zh.put(Key.LOG_STOPPING, "[系统] 正在终止已有进程...");
+        zh.put(Key.LOG_STARTED, "[系统] Linux 进程已启动，PID: ");
+        zh.put(Key.LOG_EXITED, "[系统] 进程已退出，退出码: ");
+        zh.put(Key.LOG_KILLING_TREE, "[系统] 正在清理进程树 PID=");
+        zh.put(Key.LOG_TREE_KILLED, "[系统] 进程树清理完毕。");
+        zh.put(Key.LOG_NO_PROCESS, "[系统] 当前无正在运行的进程。");
+        zh.put(Key.LOG_LANG_SWITCHED, "[系统] 界面语言已切换为：简体中文");
+        zh.put(Key.BTN_AI_CONFIG, "⚙ AI 配置");
+        zh.put(Key.BTN_FULLSCREEN, "⛶ 全屏");
+        zh.put(Key.BTN_EXIT_FULLSCREEN, "还原");
+        zh.put(Key.TITLE_AI_CONFIG, "iFlow AI 智能体配置");
+        zh.put(Key.TOAST_CONFIG_SAVED, "iFlow 配置已写入 ~/.iflow/settings.json");
+        zh.put(Key.TOAST_FETCHING_MODELS, "正在向端点获取可用模型列表...");
+        zh.put(Key.TOAST_FETCH_SUCCESS, "成功获取 %d 个可用模型");
+        zh.put(Key.TOAST_FETCH_FAIL, "获取模型失败: %s");
+        zh.put(Key.BTN_SESSIONS, "📋 会话");
+        zh.put(Key.TITLE_SESSIONS, "iFlow 会话管理");
+        zh.put(Key.SESSIONS_EMPTY, "暂无历史会话记录");
+        zh.put(Key.SESSIONS_EMPTY_DESC, "点击上方“+ 新建会话”或在终端运行 iflow 即可开始");
+        zh.put(Key.BTN_RESUME, "▶ 恢复");
+        zh.put(Key.BTN_DELETE, "🗑 删除");
+        zh.put(Key.CONFIRM_DELETE_TITLE, "删除会话");
+        zh.put(Key.CONFIRM_DELETE_SESSION, "确定要删除此会话记录吗？\nID: %s\n此操作无法恢复。");
+        zh.put(Key.BTN_RESUME_RECENT, "▶ 继续最近");
+        zh.put(Key.BTN_NEW_SESSION, "+ 新建会话");
+        zh.put(Key.BTN_REFRESH, "🔄 刷新");
+        zh.put(Key.BTN_CANCEL, "取消");
+        zh.put(Key.TOAST_SESSION_DELETED, "会话已删除");
+        zh.put(Key.TOAST_SESSION_RESUMED, "正在恢复会话: %s");
+        zh.put(Key.BADGE_TOTAL_SESSIONS, "%d 个会话");
+        zh.put(Key.BTN_PRESET_CNB, "✨ 本地 CNB 免费");
+        zh.put(Key.STATUS_PROXY_RUNNING, "本地代理运行中: %s");
+        zh.put(Key.STATUS_PROXY_STOPPED, "本地代理未启动");
+        zh.put(Key.STATUS_PROXY_STARTING, "本地代理正在获取凭证启动...");
+        zh.put(Key.BTN_FLOATING_LOG, "📜 代理悬浮日志");
+        zh.put(Key.BTN_DIAGNOSTICS, "🩺 测活");
+        zh.put(Key.BTN_MINIMIZE, "─ 折叠");
+        zh.put(Key.BTN_CLEAR_LOGS, "🗑 清空");
+        zh.put(Key.HUB_SECTION_TITLE, "AI 控制中枢 (AI CONTROL HUB)");
+        zh.put(Key.HUB_BTN_SESSIONS, "📋 会话管理");
+        zh.put(Key.HUB_BTN_CONFIG, "⚙ 配置管理");
+        zh.put(Key.HUB_BTN_WORKSPACE, "📁 工作区");
+        zh.put(Key.HUB_BTN_LOGS, "📜 代理日志 HUD");
+        STRINGS.put(Language.ZH_CN, zh);
+
+        // --- 2. English (EN) ---
+        Map<Key, String> en = new HashMap<>();
+        en.put(Key.APP_TITLE, "Android PRoot Engine");
+        en.put(Key.STATUS_LABEL_PREFIX, "Status: ");
+        en.put(Key.STATUS_UNINITIALIZED, "Uninitialized");
+        en.put(Key.STATUS_INITIALIZING, "Initializing environment...");
+        en.put(Key.STATUS_READY, "Ready (Idle)");
+        en.put(Key.STATUS_INIT_FAILED, "Init Failed");
+        en.put(Key.STATUS_RUNNING, "Running: %s");
+        en.put(Key.STATUS_STOPPED, "Stopped");
+        en.put(Key.STATUS_IDLE, "Idle (Last exit: %d)");
+        en.put(Key.STATUS_ERROR, "Error: %s");
+        en.put(Key.BTN_INIT, "Init Engine");
+        en.put(Key.BTN_RUN_UNAME, "Run uname");
+        en.put(Key.BTN_RUN_SCRIPT, "Shell (PTY)");
+        en.put(Key.BTN_STOP, "Stop Process");
+        en.put(Key.BTN_CLEAR, "Clear");
+        en.put(Key.BTN_COPY, "Copy");
+        en.put(Key.BTN_EXEC, "Run");
+        en.put(Key.SECTION_CONTROL, "CONTROL PANEL");
+        en.put(Key.SECTION_TERMINAL, "TERMINAL CONSOLE");
+        en.put(Key.HINT_CUSTOM_CMD, "Enter Linux command, e.g.: uname -a, id, ls -la / ...");
+        en.put(Key.TOAST_LOG_COPIED, "Logs copied to clipboard");
+        en.put(Key.BADGE_LINES, "%d lines");
+        en.put(Key.CONSOLE_TITLE, "Console Real-time Output:");
+        en.put(Key.LOG_INIT_START, "[System] Initializing PRoot virtualization engine...");
+        en.put(Key.LOG_INIT_SUCCESS, "[System] PRoot Engine initialized successfully!");
+        en.put(Key.LOG_INIT_FAIL, "[Error] Failed to initialize PRoot Engine. Check logcat.");
+        en.put(Key.LOG_STOPPING, "[System] Stopping existing process...");
+        en.put(Key.LOG_STARTED, "[System] Linux process started with PID: ");
+        en.put(Key.LOG_EXITED, "[System] Process exited with code: ");
+        en.put(Key.LOG_KILLING_TREE, "[System] Terminating process tree PID=");
+        en.put(Key.LOG_TREE_KILLED, "[System] Process tree terminated.");
+        en.put(Key.LOG_NO_PROCESS, "[System] No active process running.");
+        en.put(Key.LOG_LANG_SWITCHED, "[System] UI Language switched to: English");
+        en.put(Key.BTN_AI_CONFIG, "⚙ AI Config");
+        en.put(Key.BTN_FULLSCREEN, "⛶ Full");
+        en.put(Key.BTN_EXIT_FULLSCREEN, "Exit Full");
+        en.put(Key.TITLE_AI_CONFIG, "iFlow AI Agent Configuration");
+        en.put(Key.TOAST_CONFIG_SAVED, "iFlow config written to ~/.iflow/settings.json");
+        en.put(Key.TOAST_FETCHING_MODELS, "Fetching available models from endpoint...");
+        en.put(Key.TOAST_FETCH_SUCCESS, "Fetched %d available models");
+        en.put(Key.TOAST_FETCH_FAIL, "Failed to fetch models: %s");
+        en.put(Key.BTN_SESSIONS, "📋 Sessions");
+        en.put(Key.TITLE_SESSIONS, "iFlow Sessions");
+        en.put(Key.SESSIONS_EMPTY, "No session history found");
+        en.put(Key.SESSIONS_EMPTY_DESC, "Click '+ New Session' or run iflow in terminal to start");
+        en.put(Key.BTN_RESUME, "▶ Resume");
+        en.put(Key.BTN_DELETE, "🗑 Delete");
+        en.put(Key.CONFIRM_DELETE_TITLE, "Delete Session");
+        en.put(Key.CONFIRM_DELETE_SESSION, "Are you sure you want to delete this session?\nID: %s\nThis cannot be undone.");
+        en.put(Key.BTN_RESUME_RECENT, "▶ Continue Latest");
+        en.put(Key.BTN_NEW_SESSION, "+ New Session");
+        en.put(Key.BTN_REFRESH, "🔄 Refresh");
+        en.put(Key.BTN_CANCEL, "Cancel");
+        en.put(Key.TOAST_SESSION_DELETED, "Session deleted");
+        en.put(Key.TOAST_SESSION_RESUMED, "Resuming session: %s");
+        en.put(Key.BADGE_TOTAL_SESSIONS, "%d sessions");
+        en.put(Key.BTN_PRESET_CNB, "✨ Free Local CNB");
+        en.put(Key.STATUS_PROXY_RUNNING, "Local Proxy Running: %s");
+        en.put(Key.STATUS_PROXY_STOPPED, "Local Proxy Stopped");
+        en.put(Key.STATUS_PROXY_STARTING, "Starting local proxy & acquiring tokens...");
+        en.put(Key.BTN_FLOATING_LOG, "📜 Floating Log");
+        en.put(Key.BTN_DIAGNOSTICS, "🩺 Test Live");
+        en.put(Key.BTN_MINIMIZE, "─ Minimize");
+        en.put(Key.BTN_CLEAR_LOGS, "🗑 Clear");
+        en.put(Key.HUB_SECTION_TITLE, "AI CONTROL HUB");
+        en.put(Key.HUB_BTN_SESSIONS, "📋 Sessions");
+        en.put(Key.HUB_BTN_CONFIG, "⚙ Config");
+        en.put(Key.HUB_BTN_WORKSPACE, "📁 Workspace");
+        en.put(Key.HUB_BTN_LOGS, "📜 Proxy Logs HUD");
+        STRINGS.put(Language.EN, en);
+
+        // --- 3. 日本語 (JA) ---
+        Map<Key, String> ja = new HashMap<>();
+        ja.put(Key.APP_TITLE, "Android PRoot 仮想化エンジン");
+        ja.put(Key.STATUS_LABEL_PREFIX, "ステータス: ");
+        ja.put(Key.STATUS_UNINITIALIZED, "未初期化");
+        ja.put(Key.STATUS_INITIALIZING, "環境を初期化中...");
+        ja.put(Key.STATUS_READY, "準備完了");
+        ja.put(Key.STATUS_INIT_FAILED, "初期化失敗");
+        ja.put(Key.STATUS_RUNNING, "実行中: %s");
+        ja.put(Key.STATUS_STOPPED, "停止しました");
+        ja.put(Key.STATUS_IDLE, "待機中 (終了コード: %d)");
+        ja.put(Key.STATUS_ERROR, "エラー: %s");
+        ja.put(Key.BTN_INIT, "初期化");
+        ja.put(Key.BTN_RUN_UNAME, "uname 実行");
+        ja.put(Key.BTN_RUN_SCRIPT, "シェル (PTY)");
+        ja.put(Key.BTN_STOP, "強制終了");
+        ja.put(Key.BTN_CLEAR, "消去");
+        ja.put(Key.BTN_COPY, "コピー");
+        ja.put(Key.BTN_EXEC, "実行");
+        ja.put(Key.SECTION_CONTROL, "コントロールパネル");
+        ja.put(Key.SECTION_TERMINAL, "ターミナルコンソール");
+        ja.put(Key.HINT_CUSTOM_CMD, "Linuxコマンドを入力 (例: uname -a, id, ls -la / ...)");
+        ja.put(Key.TOAST_LOG_COPIED, "ログをクリップボードにコピーしました");
+        ja.put(Key.BADGE_LINES, "%d 行");
+        ja.put(Key.CONSOLE_TITLE, "コンソール出力 (リアルタイム):");
+        ja.put(Key.LOG_INIT_START, "[システム] PRoot 仮想化エンジンを初期化しています...");
+        ja.put(Key.LOG_INIT_SUCCESS, "[システム] PRoot エンジンの初期化が完了しました！");
+        ja.put(Key.LOG_INIT_FAIL, "[エラー] 初期化に失敗しました。logcat を確認してください。");
+        ja.put(Key.LOG_STOPPING, "[系统] 既存のプロセスを終了しています...");
+        ja.put(Key.LOG_STARTED, "[システム] プロセスが起動しました (PID: ");
+        ja.put(Key.LOG_EXITED, "[システム] プロセスが終了しました (終了コード: ");
+        ja.put(Key.LOG_KILLING_TREE, "[システム] プロセスツリーを強制終了中 PID=");
+        ja.put(Key.LOG_TREE_KILLED, "[システム] プロセスツリーが終了しました。");
+        ja.put(Key.LOG_NO_PROCESS, "[システム] 実行中のプロセスはありません。");
+        ja.put(Key.LOG_LANG_SWITCHED, "[システム] 言語を日本語に切り替えました。");
+        ja.put(Key.BTN_AI_CONFIG, "⚙ AI 設定");
+        ja.put(Key.BTN_FULLSCREEN, "⛶ 全画面");
+        ja.put(Key.BTN_EXIT_FULLSCREEN, "戻す");
+        ja.put(Key.TITLE_AI_CONFIG, "iFlow AI エージェント設定");
+        ja.put(Key.TOAST_CONFIG_SAVED, "~/.iflow/settings.json に保存しました");
+        ja.put(Key.TOAST_FETCHING_MODELS, "モデル一覧を取得中...");
+        ja.put(Key.TOAST_FETCH_SUCCESS, "%d 個のモデルを取得しました");
+        ja.put(Key.TOAST_FETCH_FAIL, "モデル取得失敗: %s");
+        ja.put(Key.BTN_SESSIONS, "📋 セッション");
+        ja.put(Key.TITLE_SESSIONS, "iFlow セッション管理");
+        ja.put(Key.SESSIONS_EMPTY, "履歴セッションはありません");
+        ja.put(Key.SESSIONS_EMPTY_DESC, "「+ 新規セッション」をクリックするかターミナルで iflow を実行");
+        ja.put(Key.BTN_RESUME, "▶ 再開");
+        ja.put(Key.BTN_DELETE, "🗑 削除");
+        ja.put(Key.CONFIRM_DELETE_TITLE, "セッションの削除");
+        ja.put(Key.CONFIRM_DELETE_SESSION, "このセッションを削除してもよろしいですか？\nID: %s\n元に戻すことはできません。");
+        ja.put(Key.BTN_RESUME_RECENT, "▶ 最新を再開");
+        ja.put(Key.BTN_NEW_SESSION, "+ 新規セッション");
+        ja.put(Key.BTN_REFRESH, "🔄 更新");
+        ja.put(Key.BTN_CANCEL, "キャンセル");
+        ja.put(Key.TOAST_SESSION_DELETED, "セッションを削除しました");
+        ja.put(Key.TOAST_SESSION_RESUMED, "セッションを再開中: %s");
+        ja.put(Key.BADGE_TOTAL_SESSIONS, "%d 件のセッション");
+        ja.put(Key.BTN_PRESET_CNB, "✨ ローカル CNB 無料");
+        ja.put(Key.STATUS_PROXY_RUNNING, "ローカルプロキシ稼働中: %s");
+        ja.put(Key.STATUS_PROXY_STOPPED, "ローカルプロキシ停止中");
+        ja.put(Key.STATUS_PROXY_STARTING, "ローカルプロキシ起動中 (トークン取得)...");
+        ja.put(Key.BTN_FLOATING_LOG, "📜 浮動ログ");
+        ja.put(Key.BTN_DIAGNOSTICS, "🩺 診断");
+        ja.put(Key.BTN_MINIMIZE, "─ 最小化");
+        ja.put(Key.BTN_CLEAR_LOGS, "🗑 消去");
+        ja.put(Key.HUB_SECTION_TITLE, "AI コントロールハブ");
+        ja.put(Key.HUB_BTN_SESSIONS, "📋 セッション管理");
+        ja.put(Key.HUB_BTN_CONFIG, "⚙ 設定管理");
+        ja.put(Key.HUB_BTN_WORKSPACE, "📁 ワークスペース");
+        ja.put(Key.HUB_BTN_LOGS, "📜 プロキシログ HUD");
+        STRINGS.put(Language.JA, ja);
+    }
+
+    public static void init(Context context) {
+        SharedPreferences sp = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String savedCode = sp.getString(PREF_LANG, null);
+        if (savedCode != null) {
+            currentLanguage = Language.fromCode(savedCode);
+        } else {
+            String defaultLang = Locale.getDefault().getLanguage().toLowerCase();
+            if (defaultLang.startsWith("zh")) {
+                currentLanguage = Language.ZH_CN;
+            } else if (defaultLang.startsWith("ja")) {
+                currentLanguage = Language.JA;
+            } else {
+                currentLanguage = Language.EN;
+            }
+        }
+    }
+
+    public static Language getLanguage() {
+        return currentLanguage;
+    }
+
+    public static void setLanguage(Context context, Language language) {
+        currentLanguage = language;
+        SharedPreferences sp = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        sp.edit().putString(PREF_LANG, language.getCode()).apply();
+    }
+
+    public static String get(Key key) {
+        Map<Key, String> map = STRINGS.get(currentLanguage);
+        if (map != null && map.containsKey(key)) {
+            return map.get(key);
+        }
+        return STRINGS.get(Language.EN).get(key);
+    }
+
+    public static String format(Key key, Object... args) {
+        return String.format(get(key), args);
+    }
+}

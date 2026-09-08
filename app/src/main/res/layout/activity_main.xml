@@ -1,0 +1,730 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0D1117"
+    android:fitsSystemWindows="true">
+
+    <!-- 1. Main Terminal Content Container -->
+    <LinearLayout
+        android:id="@+id/terminal_content_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Top Micro Status Bar (32dp, Geek Pure 方案A) -->
+        <LinearLayout
+            android:id="@+id/layout_top_bar"
+            android:layout_width="match_parent"
+            android:layout_height="32dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:background="#161B22">
+
+            <!-- Status dot (indicates active session running/idle state) -->
+            <View
+                android:id="@+id/view_top_status_dot"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:background="#39C5CF" />
+
+            <!-- Active Session Badge (e.g. #1:bash) -->
+            <TextView
+                android:id="@+id/tv_active_session_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="#1:bash"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:typeface="monospace"
+                android:textColor="#39C5CF"
+                android:singleLine="true" />
+
+            <!-- Active Workspace Chip (📁 /workspace ▾) -->
+            <TextView
+                android:id="@+id/tv_active_workspace_chip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="📁 /root ▾"
+                android:textSize="10.5sp"
+                android:typeface="monospace"
+                android:textColor="#E6EDF3"
+                android:singleLine="true" />
+
+            <!-- Proxy Status Chip (🌐 :7863) -->
+            <TextView
+                android:id="@+id/tv_top_proxy_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="🌐 :7863"
+                android:textSize="10sp"
+                android:typeface="monospace"
+                android:textColor="#8B949E"
+                android:singleLine="true" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!-- Session Count Badge ([1会话]) -->
+            <TextView
+                android:id="@+id/badge_session_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="[1会话]"
+                android:textSize="10sp"
+                android:typeface="monospace"
+                android:textColor="#8B949E" />
+
+            <!-- Top Drawer Dropdown Toggle (▼) -->
+            <TextView
+                android:id="@+id/btn_dropdown_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="▼"
+                android:textSize="11sp"
+                android:textColor="#39C5CF"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp" />
+
+            <!-- More Menu Icon (⋯) -->
+            <TextView
+                android:id="@+id/btn_more_menu"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="⋯"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="#8B949E"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp" />
+        </LinearLayout>
+
+        <!-- Divider line -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#21262D" />
+
+        <!-- 2. Interactive Terminal Viewport (Maximized) -->
+        <FrameLayout
+            android:id="@+id/frame_terminal"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#0D1117"
+            android:padding="2dp">
+
+            <com.termux.view.TerminalView
+                android:id="@+id/terminal_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
+        </FrameLayout>
+
+        <!-- Divider line -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#21262D" />
+
+        <!-- 3. Standard PC Two-Row Keybar -->
+        <LinearLayout
+            android:id="@+id/layout_pc_keybar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#161B22"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp">
+
+            <!-- Row 1: ESC, TAB, /, -, ~, HOME, UP, END -->
+            <LinearLayout
+                android:id="@+id/keybar_row_1"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView android:id="@+id/key_esc" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="ESC" />
+                <TextView android:id="@+id/key_tab" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="TAB" />
+                <TextView android:id="@+id/key_slash" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="/" />
+                <TextView android:id="@+id/key_dash" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="-" />
+                <TextView android:id="@+id/key_tilde" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="~" />
+                <TextView android:id="@+id/key_home" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="HOME" />
+                <TextView android:id="@+id/key_up" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="▲" />
+                <TextView android:id="@+id/key_end" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="END" />
+            </LinearLayout>
+
+            <!-- Row 2: CTRL, ALT, |, ^C, ^D, LEFT, DOWN, RIGHT -->
+            <LinearLayout
+                android:id="@+id/keybar_row_2"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:orientation="horizontal"
+                android:layout_marginTop="2dp"
+                android:gravity="center_vertical">
+
+                <TextView android:id="@+id/key_ctrl" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="CTRL" />
+                <TextView android:id="@+id/key_alt" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="ALT" />
+                <TextView android:id="@+id/key_pipe" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="|" />
+                <TextView android:id="@+id/key_sigint" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="^C" />
+                <TextView android:id="@+id/key_eof" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="^D" />
+                <TextView android:id="@+id/key_left" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="◀" />
+                <TextView android:id="@+id/key_down" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="▼" />
+                <TextView android:id="@+id/key_right" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:text="▶" />
+            </LinearLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 2. Drawer Scrim Overlay (Semi-transparent outside dismiss) -->
+    <View
+        android:id="@+id/top_drawer_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:visibility="gone" />
+
+    <!-- 3. Top Pull-Down Drawer Container (Scheme 2 - 一体化大抽屉) -->
+    <LinearLayout
+        android:id="@+id/layout_top_drawer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#161B22"
+        android:elevation="12dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <!-- Drawer Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="#0D1117">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⚡ 控制中心 &amp; 会话管理"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#E6EDF3" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/btn_drawer_collapse"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▲ 收起"
+                android:textSize="11.5sp"
+                android:textColor="#39C5CF"
+                android:padding="4dp" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#21262D" />
+
+        <!-- Scrollable Drawer Content -->
+        <ScrollView
+            android:id="@+id/scroll_drawer_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:overScrollMode="never"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="12dp">
+
+                <!-- SECTION 1: 终端会话管理 (Multi-Session Terminal Hub) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_drawer_session_header"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="💻 终端会话 (TERMINAL SESSIONS)"
+                        android:textSize="10.5sp"
+                        android:textStyle="bold"
+                        android:textColor="#8B949E" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:id="@+id/btn_drawer_new_session"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="+ 新建终端"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="#39C5CF"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="2dp"
+                        android:paddingBottom="2dp" />
+                </LinearLayout>
+
+                <!-- Dynamic Session Cards Container -->
+                <LinearLayout
+                    android:id="@+id/container_session_cards"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="8dp" />
+
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#21262D"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="10dp" />
+
+                <!-- SECTION 2: AI 工作流与工作区 (AI Workflow) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🤖 AI 工作流与工作区 (AI WORKFLOW)"
+                    android:textSize="10.5sp"
+                    android:textStyle="bold"
+                    android:textColor="#8B949E" />
+
+                <!-- Row 1: Workspace & AI Config -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp">
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_workspace"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📁"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:id="@+id/tv_drawer_workspace_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="工作区"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_ai_config"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="⚙"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="AI 模型配置"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Row 2: iFlow Sessions & Fullscreen -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="6dp">
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_iflow_sessions"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📋"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="iFlow 会话"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_fullscreen"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="⛶"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="全屏沉浸模式"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Row 3: Environment Hub & Create Project -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="6dp">
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_environment"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🛠️"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="环境管理"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_new_project"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="➕"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="新建项目"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#21262D"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="10dp" />
+
+                <!-- SECTION 3: 系统服务与工具 (Services & Tools) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🛠 系统服务与工具 (SERVICES &amp; TOOLS)"
+                    android:textSize="10.5sp"
+                    android:textStyle="bold"
+                    android:textColor="#8B949E" />
+
+                <!-- Service Row 1: Proxy & ADB -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp">
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_proxy"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🌐"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="本地代理"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_adb"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📱"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="ADB 无线调试"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Service Row 2: FTP & SSH -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="6dp">
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_ftp"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📂"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="FTP 文件服务"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_ssh"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🔑"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="Dropbear SSH"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Service Row 3: MCP & Health -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="6dp">
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_mcp"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🧩"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="MCP / 技能"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/drawer_item_health"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="#21262D">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🏥"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="环境体检与存储"
+                            android:textSize="11.5sp"
+                            android:textColor="#E6EDF3" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Bottom Pull Bar Pill Handle -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:paddingTop="12dp">
+
+                    <View
+                        android:id="@+id/drawer_handle_pill"
+                        android:layout_width="36dp"
+                        android:layout_height="4dp"
+                        android:background="#30363D" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+</FrameLayout>

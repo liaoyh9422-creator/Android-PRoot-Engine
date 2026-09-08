@@ -1,0 +1,64 @@
+package com.android.proot.proxy;
+
+/**
+ * Immutable configuration entity for CNB OpenAI Proxy Server.
+ */
+public class ProxyConfig {
+    private final String listenHost;
+    private final int port;
+    private final String apiKey;
+    private final String model;
+    private final int poolMin;
+    private final int poolMax;
+    private final int ttlMinutes;
+    private final boolean forcePromptTools;
+    private final int timeoutMs;
+
+    private ProxyConfig(Builder b) {
+        this.listenHost = b.listenHost;
+        this.port = b.port;
+        this.apiKey = b.apiKey;
+        this.model = b.model;
+        this.poolMin = b.poolMin;
+        this.poolMax = b.poolMax;
+        this.ttlMinutes = b.ttlMinutes;
+        this.forcePromptTools = b.forcePromptTools;
+        this.timeoutMs = b.timeoutMs;
+    }
+
+    public String getListenHost() { return listenHost; }
+    public int getPort() { return port; }
+    public String getApiKey() { return apiKey; }
+    public String getModel() { return model; }
+    public int getPoolMin() { return poolMin; }
+    public int getPoolMax() { return poolMax; }
+    public int getTtlMinutes() { return ttlMinutes; }
+    public boolean isForcePromptTools() { return forcePromptTools; }
+    public int getTimeoutMs() { return timeoutMs; }
+
+    public static class Builder {
+        private String listenHost = "0.0.0.0";
+        private int port = 7863;
+        private String apiKey = "";
+        private String model = "deepseek-v4-flash";
+        private int poolMin = 2;
+        private int poolMax = 8;
+        private int ttlMinutes = 30;
+        private boolean forcePromptTools = true;
+        private int timeoutMs = 15000;
+
+        public Builder setListenHost(String host) { this.listenHost = host; return this; }
+        public Builder setPort(int port) { this.port = port; return this; }
+        public Builder setApiKey(String key) { this.apiKey = key != null ? key : ""; return this; }
+        public Builder setModel(String model) { this.model = model != null && !model.isEmpty() ? model : "deepseek-v4-flash"; return this; }
+        public Builder setPoolMin(int min) { this.poolMin = Math.max(1, min); return this; }
+        public Builder setPoolMax(int max) { this.poolMax = Math.max(this.poolMin, max); return this; }
+        public Builder setTtlMinutes(int ttl) { this.ttlMinutes = Math.max(5, ttl); return this; }
+        public Builder setForcePromptTools(boolean enable) { this.forcePromptTools = enable; return this; }
+        public Builder setTimeoutMs(int ms) { this.timeoutMs = Math.max(3000, ms); return this; }
+
+        public ProxyConfig build() {
+            return new ProxyConfig(this);
+        }
+    }
+}

@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_setup_wizard"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0D1117">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- Top Step Header with rounded badge -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_setup_step_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="PROOT SETUP"
+                android:textColor="#58A6FF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_setup_step_indicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_capsule"
+                android:paddingLeft="10dp"
+                android:paddingTop="3dp"
+                android:paddingRight="10dp"
+                android:paddingBottom="3dp"
+                android:text="1 / 2"
+                android:textColor="#8B949E"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- ViewFlipper Container -->
+        <ViewFlipper
+            android:id="@+id/view_flipper_setup"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <!-- SCREEN 1: Network & Proxy Penetration (Card Style) -->
+            <LinearLayout
+                android:id="@+id/screen_proxy_check"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_card_rounded"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🌐"
+                        android:textSize="44sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:text="网络连接检测"
+                        android:textColor="#E6EDF3"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <!-- Status Pill Capsule -->
+                    <TextView
+                        android:id="@+id/tv_proxy_status_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/bg_capsule"
+                        android:paddingLeft="16dp"
+                        android:paddingTop="6dp"
+                        android:paddingRight="16dp"
+                        android:paddingBottom="6dp"
+                        android:text="⏳ 正在检测..."
+                        android:textColor="#D29922"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <!-- 8dp Independent Tip Banner -->
+                    <TextView
+                        android:id="@+id/tv_proxy_tip_banner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:background="@drawable/bg_tip_banner"
+                        android:gravity="center"
+                        android:lineSpacingExtra="2dp"
+                        android:paddingLeft="12dp"
+                        android:paddingTop="10dp"
+                        android:paddingRight="12dp"
+                        android:paddingBottom="10dp"
+                        android:text="💡 首次配置需连通国际网络，以下载 Alpine 容器及核心组件"
+                        android:textColor="#8B949E"
+                        android:textSize="12sp" />
+
+                    <!-- Screen 1 Action Buttons -->
+                    <TextView
+                        android:id="@+id/btn_proxy_proceed"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="22dp"
+                        android:background="@drawable/bg_btn_primary"
+                        android:gravity="center"
+                        android:text="继  续"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_proxy_actions_fail"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/btn_proxy_retry"
+                            android:layout_width="0dp"
+                            android:layout_height="42dp"
+                            android:layout_marginRight="6dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_btn_secondary"
+                            android:gravity="center"
+                            android:text="🔄 重新检测"
+                            android:textColor="#E6EDF3"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/btn_proxy_exit"
+                            android:layout_width="0dp"
+                            android:layout_height="42dp"
+                            android:layout_marginLeft="6dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_btn_danger"
+                            android:gravity="center"
+                            android:text="✕ 退出应用"
+                            android:textColor="#F85149"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- SCREEN 2: Environment Runtime Deployment (Card Style) -->
+            <LinearLayout
+                android:id="@+id/screen_node_install"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:paddingTop="6dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_card_rounded"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📦"
+                        android:textSize="36sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="准备开发环境"
+                        android:textColor="#E6EDF3"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_node_progress_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="正在初始化..."
+                        android:textColor="#8B949E"
+                        android:textSize="12sp" />
+
+                    <!-- 4dp Rounded Progress Bar -->
+                    <ProgressBar
+                        android:id="@+id/progress_node_download"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="6dp"
+                        android:layout_marginTop="12dp"
+                        android:max="100"
+                        android:progress="0"
+                        android:progressDrawable="@drawable/progress_rounded" />
+
+                    <!-- 8dp Independent Tip Banner -->
+                    <TextView
+                        android:id="@+id/tv_node_tip_banner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_tip_banner"
+                        android:gravity="center"
+                        android:paddingLeft="10dp"
+                        android:paddingTop="8dp"
+                        android:paddingRight="10dp"
+                        android:paddingBottom="8dp"
+                        android:text="⚡ 正在部署 Alpine 容器与 Node.js 运行库"
+                        android:textColor="#8B949E"
+                        android:textSize="11.5sp" />
+
+                    <!-- 10dp Rounded Geek Terminal Window -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_marginTop="14dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_terminal_window"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+
+                        <!-- Mac Terminal Dots Header -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingBottom="8dp">
+
+                            <View
+                                android:layout_width="8dp"
+                                android:layout_height="8dp"
+                                android:layout_marginRight="5dp"
+                                android:background="@drawable/bg_capsule"
+                                android:backgroundTint="#FF5F56" />
+
+                            <View
+                                android:layout_width="8dp"
+                                android:layout_height="8dp"
+                                android:layout_marginRight="5dp"
+                                android:background="@drawable/bg_capsule"
+                                android:backgroundTint="#FFBD2E" />
+
+                            <View
+                                android:layout_width="8dp"
+                                android:layout_height="8dp"
+                                android:layout_marginRight="8dp"
+                                android:background="@drawable/bg_capsule"
+                                android:backgroundTint="#27C93F" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="monospace"
+                                android:text="Alpine Linux (aarch64)"
+                                android:textColor="#8B949E"
+                                android:textSize="10.5sp" />
+                        </LinearLayout>
+
+                        <ScrollView
+                            android:id="@+id/scroll_node_log"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent">
+
+                            <TextView
+                                android:id="@+id/tv_node_console_log"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="monospace"
+                                android:lineSpacingExtra="4dp"
+                                android:text="⟳ 正在就绪环境...\n"
+                                android:textColor="#7EE787"
+                                android:textSize="11.5sp" />
+                        </ScrollView>
+                    </LinearLayout>
+
+                    <!-- Screen 2 Action Buttons -->
+                    <TextView
+                        android:id="@+id/btn_node_proceed"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_btn_primary"
+                        android:gravity="center"
+                        android:text="进入应用 ➔"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_node_actions_fail"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/btn_node_retry"
+                            android:layout_width="0dp"
+                            android:layout_height="42dp"
+                            android:layout_marginRight="6dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_btn_secondary"
+                            android:gravity="center"
+                            android:text="🔄 重试部署"
+                            android:textColor="#E6EDF3"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/btn_node_exit"
+                            android:layout_width="0dp"
+                            android:layout_height="42dp"
+                            android:layout_marginLeft="6dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_btn_danger"
+                            android:gravity="center"
+                            android:text="✕ 退出应用"
+                            android:textColor="#F85149"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </ViewFlipper>
+
+    </LinearLayout>
+
+</FrameLayout>

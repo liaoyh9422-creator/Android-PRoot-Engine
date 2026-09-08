@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dialog_create_container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="➕ 新建工程脚手架"
+            android:textColor="#E6EDF3"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btn_create_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✕"
+            android:textColor="#8B949E"
+            android:textSize="18sp"
+            android:padding="4dp" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:maxHeight="420dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Workspace Info -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="目标工作区 (WORKSPACE):"
+                android:textColor="#8B949E"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_target_workspace"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="#21262D"
+                android:fontFamily="monospace"
+                android:padding="8dp"
+                android:text="/workspace"
+                android:textColor="#58A6FF"
+                android:textSize="12sp" />
+
+            <!-- Project Name -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="项目名称 (PROJECT NAME):"
+                android:textColor="#8B949E"
+                android:textSize="11sp" />
+
+            <EditText
+                android:id="@+id/et_project_name"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_marginTop="4dp"
+                android:background="#21262D"
+                android:hint="my_app"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:singleLine="true"
+                android:textColor="#E6EDF3"
+                android:textColorHint="#8B949E"
+                android:textSize="13sp" />
+
+            <!-- Template Radio Group -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="选择工程模板 (TEMPLATE):"
+                android:textColor="#8B949E"
+                android:textSize="11sp" />
+
+            <RadioGroup
+                android:id="@+id/rg_templates"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp">
+
+                <RadioButton
+                    android:id="@+id/rb_tmpl_android"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:text="📱 Android 原生项目 (极简命令行 APK 打包)"
+                    android:textColor="#E6EDF3"
+                    android:textSize="12sp" />
+
+                <RadioButton
+                    android:id="@+id/rb_tmpl_cpp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="⚙️ C/C++ CMake 原生项目 (CLI + .so 共享库)"
+                    android:textColor="#E6EDF3"
+                    android:textSize="12sp" />
+
+                <RadioButton
+                    android:id="@+id/rb_tmpl_rust"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🦀 Rust 命令行与 Android JNI 原生项目"
+                    android:textColor="#E6EDF3"
+                    android:textSize="12sp" />
+
+                <RadioButton
+                    android:id="@+id/rb_tmpl_go"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🐹 Go 命令行与 JNI/Web 极简项目"
+                    android:textColor="#E6EDF3"
+                    android:textSize="12sp" />
+            </RadioGroup>
+
+            <!-- Automation options -->
+            <CheckBox
+                android:id="@+id/cb_auto_build"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:checked="true"
+                android:text="创建后在终端立即执行构建验证 (./build.sh)"
+                android:textColor="#8B949E"
+                android:textSize="12sp" />
+
+            <!-- Submit Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btn_cancel_create"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:background="#21262D"
+                    android:gravity="center"
+                    android:text="取消"
+                    android:textColor="#8B949E"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/btn_submit_create"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="2"
+                    android:layout_marginStart="6dp"
+                    android:background="#238636"
+                    android:gravity="center"
+                    android:text="🚀 立即创建并构建"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>
