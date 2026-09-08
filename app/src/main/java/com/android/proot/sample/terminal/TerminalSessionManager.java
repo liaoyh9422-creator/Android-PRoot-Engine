@@ -278,8 +278,19 @@ public final class TerminalSessionManager {
                 }
 
                 // Inject clean UTF-8 environment
-                builder.addEnv("LANG", "C.UTF-8");
-                builder.addEnv("LC_ALL", "C.UTF-8");
+                builder.addEnv("LANG", "zh_CN.UTF-8");
+                builder.addEnv("LC_ALL", "zh_CN.UTF-8");
+                builder.addEnv("LANGUAGE", "zh_CN:zh");
+
+                // Inject TrueColor (24-bit) terminal environment
+                builder.addEnv("TERM", "xterm-256color");
+                builder.addEnv("COLORTERM", "truecolor");
+                builder.addEnv("FORCE_COLOR", "3");
+
+                // Inject Thinking mode environment
+                builder.addEnv("DEFAULT_REASONING_EFFORT", "high");
+                builder.addEnv("THINKING_DISPLAY_MODE", "visible");
+                builder.addEnv("MAX_THINKING_TOKENS", "31999");
 
                 PRootConfig config = builder.build();
                 List<String> cmd = engine.buildCommandLine(config);

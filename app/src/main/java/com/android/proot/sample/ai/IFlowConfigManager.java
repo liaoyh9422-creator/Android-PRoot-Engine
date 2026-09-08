@@ -152,6 +152,8 @@ public final class IFlowConfigManager {
             json.put("modelName", model);
             // Permanently bypass discontinuation/farewell letter notice
             json.put("hasViewedFarewellLetter", true);
+            // Enable thinking mode by default
+            json.put("thinkingModeEnabled", true);
             // Preserve language setting or default to zh-CN
             if (!json.has("language") || json.optString("language").isEmpty()) {
                 json.put("language", "zh-CN");
@@ -169,6 +171,14 @@ public final class IFlowConfigManager {
             fw.write("export LANG=\"zh_CN.UTF-8\"\n");
             fw.write("export LC_ALL=\"zh_CN.UTF-8\"\n");
             fw.write("export LANGUAGE=\"zh_CN:zh\"\n");
+            // TrueColor (24-bit) terminal environment
+            fw.write("export TERM=\"xterm-256color\"\n");
+            fw.write("export COLORTERM=\"truecolor\"\n");
+            fw.write("export FORCE_COLOR=\"3\"\n");
+            // Thinking mode defaults
+            fw.write("export DEFAULT_REASONING_EFFORT=\"high\"\n");
+            fw.write("export THINKING_DISPLAY_MODE=\"visible\"\n");
+            fw.write("export MAX_THINKING_TOKENS=\"31999\"\n");
             if (!apiKey.isEmpty()) {
                 fw.write("export IFLOW_API_KEY=\"" + escapeShell(apiKey) + "\"\n");
                 fw.write("export OPENAI_API_KEY=\"" + escapeShell(apiKey) + "\"\n");

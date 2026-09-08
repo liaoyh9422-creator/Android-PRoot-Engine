@@ -137,6 +137,14 @@ public class PRootEngine {
         env.put("LANG", "zh_CN.UTF-8");
         env.put("LC_ALL", "zh_CN.UTF-8");
         env.put("LANGUAGE", "zh_CN:zh");
+        // TrueColor (24-bit) terminal environment
+        env.put("TERM", "xterm-256color");
+        env.put("COLORTERM", "truecolor");
+        env.put("FORCE_COLOR", "3");
+        // Thinking mode defaults
+        env.put("DEFAULT_REASONING_EFFORT", "high");
+        env.put("THINKING_DISPLAY_MODE", "visible");
+        env.put("MAX_THINKING_TOKENS", "31999");
         env.put("ENV", "/etc/profile");
         env.putAll(config.getEnvVars());
         return env;
@@ -365,8 +373,14 @@ public class PRootEngine {
     }
 
     /**
-     * Patches iFlow CLI bundle to render tool call cards with round borders.
-     * Replaces raw borderless container attributes with rounded Unicode border style (#30363D).
+     * Patches iFlow CLI bundle to render full terminal card UI (Plan B):
+     * 1. Tool call cards: round borders (#30363D)
+     * 2. Input box capsule: closed round borders
+     * 3. User message bubbles: round card (#30363D)
+     * 4. Thinking reasoning chain: round card (#30363D)
+     * 5. Markdown code block: round card (#30363D)
+     * 6. Error alerts: round red card (ae.AccentRed)
+     * 7. Notification alerts: round yellow card (ae.AccentYellow)
      *
      * @param rootfsDir The rootfs root directory
      * @return true if patched or already patched, false if file missing or error
@@ -376,7 +390,7 @@ public class PRootEngine {
         try {
             File bundleDir = new File(rootfsDir, "usr/local/lib/node_modules/@iflow-ai/iflow-cli/bundle");
             File iflowJs = new File(bundleDir, "iflow.js");
-            File patchFlag = new File(bundleDir, ".card_border_patched");
+            File patchFlag = new File(bundleDir, ".card_border_patched_v2");
 
             if (patchFlag.exists()) {
                 return true;
@@ -396,18 +410,49 @@ public class PRootEngine {
             }
 
             String content = baos.toString("UTF-8");
-            String target = "{paddingX:1,paddingBottom:1,flexDirection:\"column\"";
-            if (content.contains(target)) {
-                String replacement = "{borderStyle:\"round\",borderColor:\"#30363D\",marginTop:1,marginBottom:1,paddingX:1,paddingBottom:0,flexDirection:\"column\"";
-                String patched = content.replace(target, replacement);
-                try (FileOutputStream fos = new FileOutputStream(iflowJs)) {
-                    fos.write(patched.getBytes(StandardCharsets.UTF_8));
+            String[][] replacements = new String[][]{
+                    // 1. Tool call card borders
+                    {"{paddingX:1,paddingBottom:1,flexDirection:\"column\"",
+                     "{borderStyle:\"round\",borderColor:\"#30363D\",marginTop:1,marginBottom:1,paddingX:1,paddingBottom:0,flexDirection:\"column\""},
+                    // 2. Closed input box capsule
+                    {"borderStyle:\"round\",borderLeft:!1,borderRight:!1",
+                     "borderStyle:\"round\""},
+                    // 3. User message bubble card
+                    {"backgroundColor:ae?.UserMessageBackground||ae.Background,flexDirection:\"row\",paddingX:2,paddingY:0",
+                     "borderStyle:\"round\",borderColor:\"#30363D\",backgroundColor:ae?.UserMessageBackground||ae.Background,flexDirection:\"row\",paddingX:2,paddingY:0"},
+                    // 4. Thinking chain card
+                    {"(0,jA.jsxs)(ie,{marginY:1,flexDirection:\"column\",children:[(0,jA.jsxs)(ie,{marginBottom:1",
+                     "(0,jA.jsxs)(ie,{borderStyle:\"round\",borderColor:\"#30363D\",paddingX:1,paddingY:0,marginY:1,flexDirection:\"column\",width:\"100%\",children:[(0,jA.jsxs)(ie,{marginBottom:1"},
+                    // 5. Markdown code block
+                    {"return(0,Uo.jsx)(ie,{paddingLeft:wJ,flexDirection:\"column\",width:o,flexShrink:0,children:c})",
+                     "return(0,Uo.jsx)(ie,{borderStyle:\"round\",borderColor:\"#30363D\",paddingX:1,paddingY:0,marginY:1,flexDirection:\"column\",width:o,flexShrink:0,children:c})"},
+                    // 6. Error alert card
+                    {"zWi=({text:t})=>(0,DJ.jsxs)(ie,{flexDirection:\"row\",marginBottom:1",
+                     "zWi=({text:t})=>(0,DJ.jsxs)(ie,{borderStyle:\"round\",borderColor:ae.AccentRed,paddingX:1,paddingY:0,marginY:1,flexDirection:\"row\""},
+                    // 7. Notification alert card
+                    {"(0,TJ.jsxs)(ie,{flexDirection:\"row\",marginTop:1,marginBottom:o",
+                     "(0,TJ.jsxs)(ie,{borderStyle:\"round\",borderColor:ae.AccentYellow,paddingX:1,paddingY:0,marginTop:1,marginBottom:o,flexDirection:\"row\""}
+            };
+
+            boolean modified = false;
+            for (String[] pair : replacements) {
+                String target = pair[0];
+                String repl = pair[1];
+                if (content.contains(target)) {
+                    content = content.replace(target, repl);
+                    modified = true;
                 }
-                Log.i(TAG, "Successfully patched iFlow CLI tool call card border style");
+            }
+
+            if (modified) {
+                try (FileOutputStream fos = new FileOutputStream(iflowJs)) {
+                    fos.write(content.getBytes(StandardCharsets.UTF_8));
+                }
+                Log.i(TAG, "Successfully applied Plan B terminal card patches to iFlow bundle");
             }
 
             try (FileWriter fw = new FileWriter(patchFlag)) {
-                fw.write("1\n");
+                fw.write("2\n");
             }
             return true;
         } catch (Exception e) {
@@ -436,27 +481,41 @@ public class PRootEngine {
             String script =
                     "#!/bin/sh\n" +
                     "export NODE_NO_WARNINGS=1\n" +
+                    "export TERM=xterm-256color\n" +
+                    "export COLORTERM=truecolor\n" +
+                    "export FORCE_COLOR=3\n" +
+                    "export DEFAULT_REASONING_EFFORT=high\n" +
+                    "export THINKING_DISPLAY_MODE=visible\n" +
+                    "export MAX_THINKING_TOKENS=31999\n" +
                     "[ -f /root/.iflow.env ] && . /root/.iflow.env\n" +
                     "ENTRY=\"/usr/local/lib/node_modules/@iflow-ai/iflow-cli/bundle/entry.js\"\n" +
                     "IFLOW_JS=\"/usr/local/lib/node_modules/@iflow-ai/iflow-cli/bundle/iflow.js\"\n" +
-                    "PATCH_FLAG=\"/usr/local/lib/node_modules/@iflow-ai/iflow-cli/bundle/.card_border_patched\"\n" +
+                    "PATCH_FLAG=\"/usr/local/lib/node_modules/@iflow-ai/iflow-cli/bundle/.card_border_patched_v2\"\n" +
                     "\n" +
                     "apply_card_patch() {\n" +
                     "    if [ -f \"$IFLOW_JS\" ] && [ ! -f \"$PATCH_FLAG\" ]; then\n" +
                     "        /usr/bin/node -e \"\n" +
                     "const fs = require('fs');\n" +
-                    "const p = '$IFLOW_JS';\n" +
+                    "const p = process.argv[1];\n" +
+                    "const flag = process.argv[2];\n" +
                     "try {\n" +
                     "    let s = fs.readFileSync(p, 'utf8');\n" +
-                    "    const target = '{paddingX:1,paddingBottom:1,flexDirection:\\\"column\\\"';\n" +
-                    "    const repl = '{borderStyle:\\\"round\\\",borderColor:\\\"#30363D\\\",marginTop:1,marginBottom:1,paddingX:1,paddingBottom:0,flexDirection:\\\"column\\\"';\n" +
-                    "    if (s.includes(target)) {\n" +
-                    "        s = s.split(target).join(repl);\n" +
-                    "        fs.writeFileSync(p, s, 'utf8');\n" +
+                    "    const reps = [\n" +
+                    "        ['{paddingX:1,paddingBottom:1,flexDirection:\\\"column\\\"', '{borderStyle:\\\"round\\\",borderColor:\\\"#30363D\\\",marginTop:1,marginBottom:1,paddingX:1,paddingBottom:0,flexDirection:\\\"column\\\"'],\n" +
+                    "        ['borderStyle:\\\"round\\\",borderLeft:!1,borderRight:!1', 'borderStyle:\\\"round\\\"'],\n" +
+                    "        ['backgroundColor:ae?.UserMessageBackground||ae.Background,flexDirection:\\\"row\\\",paddingX:2,paddingY:0', 'borderStyle:\\\"round\\\",borderColor:\\\"#30363D\\\",backgroundColor:ae?.UserMessageBackground||ae.Background,flexDirection:\\\"row\\\",paddingX:2,paddingY:0'],\n" +
+                    "        ['(0,jA.jsxs)(ie,{marginY:1,flexDirection:\\\"column\\\",children:[(0,jA.jsxs)(ie,{marginBottom:1', '(0,jA.jsxs)(ie,{borderStyle:\\\"round\\\",borderColor:\\\"#30363D\\\",paddingX:1,paddingY:0,marginY:1,flexDirection:\\\"column\\\",width:\\\"100%\\\",children:[(0,jA.jsxs)(ie,{marginBottom:1'],\n" +
+                    "        ['return(0,Uo.jsx)(ie,{paddingLeft:wJ,flexDirection:\\\"column\\\",width:o,flexShrink:0,children:c})', 'return(0,Uo.jsx)(ie,{borderStyle:\\\"round\\\",borderColor:\\\"#30363D\\\",paddingX:1,paddingY:0,marginY:1,flexDirection:\\\"column\\\",width:o,flexShrink:0,children:c})'],\n" +
+                    "        ['zWi=({text:t})=>(0,DJ.jsxs)(ie,{flexDirection:\\\"row\\\",marginBottom:1', 'zWi=({text:t})=>(0,DJ.jsxs)(ie,{borderStyle:\\\"round\\\",borderColor:ae.AccentRed,paddingX:1,paddingY:0,marginY:1,flexDirection:\\\"row\\\"'],\n" +
+                    "        ['(0,TJ.jsxs)(ie,{flexDirection:\\\"row\\\",marginTop:1,marginBottom:o', '(0,TJ.jsxs)(ie,{borderStyle:\\\"round\\\",borderColor:ae.AccentYellow,paddingX:1,paddingY:0,marginTop:1,marginBottom:o,flexDirection:\\\"row\\\"']\n" +
+                    "    ];\n" +
+                    "    for (const [t, r] of reps) {\n" +
+                    "        if (s.includes(t)) s = s.split(t).join(r);\n" +
                     "    }\n" +
-                    "    fs.writeFileSync('$PATCH_FLAG', '1');\n" +
+                    "    fs.writeFileSync(p, s, 'utf8');\n" +
+                    "    fs.writeFileSync(flag, '2');\n" +
                     "} catch (e) {}\n" +
-                    "\" 2>/dev/null || true\n" +
+                    "\" \"$IFLOW_JS\" \"$PATCH_FLAG\" 2>/dev/null || true\n" +
                     "    fi\n" +
                     "}\n" +
                     "\n" +
