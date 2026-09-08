@@ -390,7 +390,7 @@ public class PRootEngine {
         try {
             File bundleDir = new File(rootfsDir, "usr/local/lib/node_modules/@iflow-ai/iflow-cli/bundle");
             File iflowJs = new File(bundleDir, "iflow.js");
-            File patchFlag = new File(bundleDir, ".card_border_patched_v2");
+            File patchFlag = new File(bundleDir, ".card_border_patched_v3");
 
             if (patchFlag.exists()) {
                 return true;
@@ -431,7 +431,10 @@ public class PRootEngine {
                      "zWi=({text:t})=>(0,DJ.jsxs)(ie,{borderStyle:\"round\",borderColor:ae.AccentRed,paddingX:1,paddingY:0,marginY:1,flexDirection:\"row\""},
                     // 7. Notification alert card
                     {"(0,TJ.jsxs)(ie,{flexDirection:\"row\",marginTop:1,marginBottom:o",
-                     "(0,TJ.jsxs)(ie,{borderStyle:\"round\",borderColor:ae.AccentYellow,paddingX:1,paddingY:0,marginTop:1,marginBottom:o,flexDirection:\"row\""}
+                     "(0,TJ.jsxs)(ie,{borderStyle:\"round\",borderColor:ae.AccentYellow,paddingX:1,paddingY:0,marginTop:1,marginBottom:o,flexDirection:\"row\""},
+                    // 8. Thinking card header: real-time character count and word ticker
+                    {"color:ae.Comment,italic:!0,children:e?.subject?I.t(\"thinking.thinkingWithSubject\",{subject:e.subject}):I.t(\"thinking.thinking\")+\"...\"}),o&&",
+                     "color:ae.Comment,italic:!0,children:e?.subject?I.t(\"thinking.thinkingWithSubject\",{subject:e.subject}):I.t(\"thinking.thinking\")+\"...\"+(d?\" · \"+d.replace(/\\s+/g,\"\").length+\" 字\":\"\")}),o&&"}
             };
 
             boolean modified = false;
@@ -452,7 +455,7 @@ public class PRootEngine {
             }
 
             try (FileWriter fw = new FileWriter(patchFlag)) {
-                fw.write("2\n");
+                fw.write("3\n");
             }
             return true;
         } catch (Exception e) {
@@ -490,7 +493,7 @@ public class PRootEngine {
                     "[ -f /root/.iflow.env ] && . /root/.iflow.env\n" +
                     "ENTRY=\"/usr/local/lib/node_modules/@iflow-ai/iflow-cli/bundle/entry.js\"\n" +
                     "IFLOW_JS=\"/usr/local/lib/node_modules/@iflow-ai/iflow-cli/bundle/iflow.js\"\n" +
-                    "PATCH_FLAG=\"/usr/local/lib/node_modules/@iflow-ai/iflow-cli/bundle/.card_border_patched_v2\"\n" +
+                    "PATCH_FLAG=\"/usr/local/lib/node_modules/@iflow-ai/iflow-cli/bundle/.card_border_patched_v3\"\n" +
                     "\n" +
                     "apply_card_patch() {\n" +
                     "    if [ -f \"$IFLOW_JS\" ] && [ ! -f \"$PATCH_FLAG\" ]; then\n" +
@@ -507,13 +510,14 @@ public class PRootEngine {
                     "        ['(0,jA.jsxs)(ie,{marginY:1,flexDirection:\\\"column\\\",children:[(0,jA.jsxs)(ie,{marginBottom:1', '(0,jA.jsxs)(ie,{borderStyle:\\\"round\\\",borderColor:\\\"#30363D\\\",paddingX:1,paddingY:0,marginY:1,flexDirection:\\\"column\\\",width:\\\"100%\\\",children:[(0,jA.jsxs)(ie,{marginBottom:1'],\n" +
                     "        ['return(0,Uo.jsx)(ie,{paddingLeft:wJ,flexDirection:\\\"column\\\",width:o,flexShrink:0,children:c})', 'return(0,Uo.jsx)(ie,{borderStyle:\\\"round\\\",borderColor:\\\"#30363D\\\",paddingX:1,paddingY:0,marginY:1,flexDirection:\\\"column\\\",width:o,flexShrink:0,children:c})'],\n" +
                     "        ['zWi=({text:t})=>(0,DJ.jsxs)(ie,{flexDirection:\\\"row\\\",marginBottom:1', 'zWi=({text:t})=>(0,DJ.jsxs)(ie,{borderStyle:\\\"round\\\",borderColor:ae.AccentRed,paddingX:1,paddingY:0,marginY:1,flexDirection:\\\"row\\\"'],\n" +
-                    "        ['(0,TJ.jsxs)(ie,{flexDirection:\\\"row\\\",marginTop:1,marginBottom:o', '(0,TJ.jsxs)(ie,{borderStyle:\\\"round\\\",borderColor:ae.AccentYellow,paddingX:1,paddingY:0,marginTop:1,marginBottom:o,flexDirection:\\\"row\\\"']\n" +
+                    "        ['(0,TJ.jsxs)(ie,{flexDirection:\\\"row\\\",marginTop:1,marginBottom:o', '(0,TJ.jsxs)(ie,{borderStyle:\\\"round\\\",borderColor:ae.AccentYellow,paddingX:1,paddingY:0,marginTop:1,marginBottom:o,flexDirection:\\\"row\\\"'],\n" +
+                    "        ['color:ae.Comment,italic:!0,children:e?.subject?I.t(\\\"thinking.thinkingWithSubject\\\",{subject:e.subject}):I.t(\\\"thinking.thinking\\\")+\\\"...\\\"}),o&&', 'color:ae.Comment,italic:!0,children:e?.subject?I.t(\\\"thinking.thinkingWithSubject\\\",{subject:e.subject}):I.t(\\\"thinking.thinking\\\")+\\\"...\\\"+(d?\\\" · \\\"+d.replace(/\\\\s+/g,\\\"\\\").length+\\\" 字\\\":\\\"\\\")}),o&&']\n" +
                     "    ];\n" +
                     "    for (const [t, r] of reps) {\n" +
                     "        if (s.includes(t)) s = s.split(t).join(r);\n" +
                     "    }\n" +
                     "    fs.writeFileSync(p, s, 'utf8');\n" +
-                    "    fs.writeFileSync(flag, '2');\n" +
+                    "    fs.writeFileSync(flag, '3');\n" +
                     "} catch (e) {}\n" +
                     "\" \"$IFLOW_JS\" \"$PATCH_FLAG\" 2>/dev/null || true\n" +
                     "    fi\n" +

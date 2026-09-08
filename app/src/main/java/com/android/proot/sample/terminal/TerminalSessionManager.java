@@ -288,7 +288,8 @@ public final class TerminalSessionManager {
                 builder.addEnv("FORCE_COLOR", "3");
 
                 // Inject Thinking mode environment
-                builder.addEnv("DEFAULT_REASONING_EFFORT", "high");
+                String effort = iflowConfig.getReasoningEffort();
+                builder.addEnv("DEFAULT_REASONING_EFFORT", effort);
                 builder.addEnv("THINKING_DISPLAY_MODE", "visible");
                 builder.addEnv("MAX_THINKING_TOKENS", "31999");
 

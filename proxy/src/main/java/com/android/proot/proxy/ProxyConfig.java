@@ -13,6 +13,8 @@ public class ProxyConfig {
     private final int ttlMinutes;
     private final boolean forcePromptTools;
     private final int timeoutMs;
+    private final boolean enableThinking;
+    private final String reasoningEffort;
 
     private ProxyConfig(Builder b) {
         this.listenHost = b.listenHost;
@@ -24,6 +26,8 @@ public class ProxyConfig {
         this.ttlMinutes = b.ttlMinutes;
         this.forcePromptTools = b.forcePromptTools;
         this.timeoutMs = b.timeoutMs;
+        this.enableThinking = b.enableThinking;
+        this.reasoningEffort = b.reasoningEffort;
     }
 
     public String getListenHost() { return listenHost; }
@@ -35,6 +39,8 @@ public class ProxyConfig {
     public int getTtlMinutes() { return ttlMinutes; }
     public boolean isForcePromptTools() { return forcePromptTools; }
     public int getTimeoutMs() { return timeoutMs; }
+    public boolean isEnableThinking() { return enableThinking; }
+    public String getReasoningEffort() { return reasoningEffort; }
 
     public static class Builder {
         private String listenHost = "0.0.0.0";
@@ -46,6 +52,8 @@ public class ProxyConfig {
         private int ttlMinutes = 30;
         private boolean forcePromptTools = true;
         private int timeoutMs = 15000;
+        private boolean enableThinking = true;
+        private String reasoningEffort = "high";
 
         public Builder setListenHost(String host) { this.listenHost = host; return this; }
         public Builder setPort(int port) { this.port = port; return this; }
@@ -56,6 +64,8 @@ public class ProxyConfig {
         public Builder setTtlMinutes(int ttl) { this.ttlMinutes = Math.max(5, ttl); return this; }
         public Builder setForcePromptTools(boolean enable) { this.forcePromptTools = enable; return this; }
         public Builder setTimeoutMs(int ms) { this.timeoutMs = Math.max(3000, ms); return this; }
+        public Builder setEnableThinking(boolean enable) { this.enableThinking = enable; return this; }
+        public Builder setReasoningEffort(String effort) { this.reasoningEffort = effort != null ? effort : "high"; return this; }
 
         public ProxyConfig build() {
             return new ProxyConfig(this);

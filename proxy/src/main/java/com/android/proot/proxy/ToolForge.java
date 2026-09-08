@@ -248,6 +248,29 @@ public final class ToolForge {
         return cleaned.trim();
     }
 
+    private static final Pattern THINK_TAG = Pattern.compile("(?is)<think>(.*?)(?:</think>|$)");
+
+    /**
+     * Extracts <think>...</think> reasoning blocks from text.
+     * Returns [extractedReasoning, cleanedContent].
+     */
+    public static String[] extractThinking(String text) {
+        if (text == null || !text.contains("<think>")) {
+            return new String[]{"", text != null ? text : ""};
+        }
+        Matcher matcher = THINK_TAG.matcher(text);
+        StringBuilder thinking = new StringBuilder();
+        while (matcher.find()) {
+            String chunk = matcher.group(1).trim();
+            if (!chunk.isEmpty()) {
+                if (thinking.length() > 0) thinking.append("\n");
+                thinking.append(chunk);
+            }
+        }
+        String cleanContent = text.replaceAll("(?is)<think>.*?(?:</think>|$)", "").trim();
+        return new String[]{thinking.toString(), cleanContent};
+    }
+
     // Helper methods
 
     private static Set<String> allowedNames(JSONArray tools) {

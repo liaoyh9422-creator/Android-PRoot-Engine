@@ -255,7 +255,25 @@ public final class EmbeddedProxyServer {
 
         if (body.has("temperature")) upstreamReq.put("temperature", body.opt("temperature"));
         if (body.has("top_p")) upstreamReq.put("top_p", body.opt("top_p"));
-        if (body.has("enable_thinking")) upstreamReq.put("enable_thinking", body.opt("enable_thinking"));
+
+        // Coomi-style Reasoning Effort & Thinking lifecycle support
+        boolean enableThinking = config.isEnableThinking();
+        if (body.has("enable_thinking")) {
+            enableThinking = body.optBoolean("enable_thinking", enableThinking);
+        } else if (body.has("reasoning_effort")) {
+            String effort = body.optString("reasoning_effort", "auto");
+            enableThinking = !"low".equalsIgnoreCase(effort);
+        } else if (body.has("thinking")) {
+            enableThinking = true;
+        }
+        if (enableThinking) {
+            upstreamReq.put("enable_thinking", true);
+        }
+
+        String reasoningEffort = body.optString("reasoning_effort", config.getReasoningEffort());
+        if (!reasoningEffort.isEmpty() && !"auto".equalsIgnoreCase(reasoningEffort)) {
+            upstreamReq.put("reasoning_effort", reasoningEffort);
+        }
 
         if (!promptTools && tools.length() > 0) {
             logger.onLog("TOOL", "tools present but XYML fallback disabled; CNB native tools are not sent");
@@ -263,6 +281,18 @@ public final class EmbeddedProxyServer {
 
         UpstreamResult upstream = chatUpstream(upstreamReq);
         String upstreamText = upstream.content.toString();
+
+        // Extract <think>...</think> reasoning blocks from content if reasoning_content is empty
+        if (upstream.reasoning.length() == 0 && upstreamText.contains("<think>")) {
+            String[] extracted = ToolForge.extractThinking(upstreamText);
+            if (!extracted[0].isEmpty()) {
+                upstream.reasoning.append(extracted[0]);
+                upstreamText = extracted[1];
+                upstream.content.setLength(0);
+                upstream.content.append(upstreamText);
+                logger.onLog("THINK", "Extracted " + extracted[0].length() + " chars from <think> tags");
+            }
+        }
 
         JSONArray calls = promptTools ? ToolForge.parseToolCalls(upstreamText, tools) : new JSONArray();
         String content = calls.length() > 0 ? ToolForge.stripProtocolMarkup(upstreamText) : upstreamText;
@@ -282,6 +312,68 @@ public final class EmbeddedProxyServer {
     }
 
     private UpstreamResult chatUpstream(JSONObject request) throws Exception {
+        return sendWithReasoningFallback(request);
+    }
+
+    /**
+     * 400 兜底降级阶梯（对齐 Coomi send_with_reasoning_fallback 策略）：
+     * 当上游返回 400 Bad Request 时逐级剥离非标准参数并重试：
+     * 阶梯 1：剥离 reasoning_effort / enable_thinking / thinking
+     * 阶梯 2：剥离 top_p / top_k
+     * 阶梯 3：剥离 temperature
+     */
+    private UpstreamResult sendWithReasoningFallback(JSONObject request) throws Exception {
+        try {
+            return executeChatUpstream(request);
+        } catch (IOException e) {
+            String msg = e.getMessage() != null ? e.getMessage() : "";
+            if (msg.contains("upstream returned 400")) {
+                logger.onLog("FALLBACK", "Upstream 400 Bad Request, activating Coomi fallback ladder: " + msg);
+
+                // Step 1: Strip reasoning fields
+                JSONObject s1 = new JSONObject(request.toString());
+                boolean hasReasoning = s1.has("enable_thinking") || s1.has("reasoning_effort") || s1.has("thinking");
+                if (hasReasoning) {
+                    s1.remove("enable_thinking");
+                    s1.remove("reasoning_effort");
+                    s1.remove("thinking");
+                    logger.onLog("FALLBACK", "Step 1: Removed reasoning/thinking parameters");
+                    try {
+                        return executeChatUpstream(s1);
+                    } catch (IOException e1) {
+                        logger.onLog("FALLBACK", "Step 1 failed, trying next ladder step: " + e1.getMessage());
+                    }
+                }
+
+                // Step 2: Strip top_k / top_p
+                JSONObject s2 = new JSONObject(request.toString());
+                s2.remove("enable_thinking");
+                s2.remove("reasoning_effort");
+                s2.remove("thinking");
+                s2.remove("top_k");
+                s2.remove("top_p");
+                logger.onLog("FALLBACK", "Step 2: Removed top_k / top_p");
+                try {
+                    return executeChatUpstream(s2);
+                } catch (IOException e2) {
+                    logger.onLog("FALLBACK", "Step 2 failed, trying next ladder step: " + e2.getMessage());
+                }
+
+                // Step 3: Strip temperature
+                JSONObject s3 = new JSONObject(s2.toString());
+                s3.remove("temperature");
+                logger.onLog("FALLBACK", "Step 3: Removed temperature");
+                try {
+                    return executeChatUpstream(s3);
+                } catch (IOException e3) {
+                    logger.onLog("FALLBACK", "Step 3 failed: " + e3.getMessage());
+                }
+            }
+            throw e;
+        }
+    }
+
+    private UpstreamResult executeChatUpstream(JSONObject request) throws Exception {
         Exception last = null;
         for (int attempt = 1; attempt <= 3; attempt++) {
             CsrfPool.CsrfToken token = pool.acquire();

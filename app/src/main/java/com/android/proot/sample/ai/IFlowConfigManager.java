@@ -35,9 +35,11 @@ public final class IFlowConfigManager {
     public static final String KEY_API_KEY = "api_key";
     public static final String KEY_MODEL = "model";
     public static final String KEY_YOLO = "yolo";
+    public static final String KEY_REASONING_EFFORT = "reasoning_effort";
 
     public static final String DEFAULT_MODEL = "deepseek-v4-flash";
     public static final String DEFAULT_CNB_KEY = "cnb-free";
+    public static final String DEFAULT_REASONING_EFFORT = "high";
 
     private static volatile IFlowConfigManager sInstance;
 
@@ -100,16 +102,26 @@ public final class IFlowConfigManager {
         return getPrefs().getBoolean(KEY_YOLO, true);
     }
 
+    public String getReasoningEffort() {
+        return getPrefs().getString(KEY_REASONING_EFFORT, DEFAULT_REASONING_EFFORT);
+    }
+
+    public void setReasoningEffort(String effort) {
+        String eff = effort != null && !effort.trim().isEmpty() ? effort.trim() : DEFAULT_REASONING_EFFORT;
+        getPrefs().edit().putString(KEY_REASONING_EFFORT, eff).apply();
+    }
+
     public static boolean isLocalProxy(String url) {
         if (url == null) return false;
         String lower = url.toLowerCase();
         return lower.contains("127.0.0.1") || lower.contains("localhost");
     }
 
-    public void saveConfig(String baseUrl, String apiKey, String model, boolean yolo, File rootfsDir) {
+    public void saveConfig(String baseUrl, String apiKey, String model, boolean yolo, String reasoningEffort, File rootfsDir) {
         String trimmedUrl = baseUrl != null ? baseUrl.trim() : "";
         String trimmedKey = apiKey != null ? apiKey.trim() : "";
         String trimmedModel = model != null ? model.trim() : "";
+        String trimmedEffort = reasoningEffort != null && !reasoningEffort.trim().isEmpty() ? reasoningEffort.trim() : DEFAULT_REASONING_EFFORT;
 
         if (trimmedKey.isEmpty() && isLocalProxy(trimmedUrl)) {
             trimmedKey = DEFAULT_CNB_KEY;
@@ -120,9 +132,14 @@ public final class IFlowConfigManager {
                 .putString(KEY_API_KEY, trimmedKey)
                 .putString(KEY_MODEL, trimmedModel)
                 .putBoolean(KEY_YOLO, yolo)
+                .putString(KEY_REASONING_EFFORT, trimmedEffort)
                 .apply();
 
         syncIFlowConfigToRootfs(rootfsDir);
+    }
+
+    public void saveConfig(String baseUrl, String apiKey, String model, boolean yolo, File rootfsDir) {
+        saveConfig(baseUrl, apiKey, model, yolo, getReasoningEffort(), rootfsDir);
     }
 
     public void syncIFlowConfigToRootfs(File rootfsDir) {
@@ -144,6 +161,9 @@ public final class IFlowConfigManager {
         iflowDir.mkdirs();
         File configFile = new File(iflowDir, "settings.json");
 
+        String effort = getReasoningEffort();
+        boolean enableThinking = !"low".equalsIgnoreCase(effort);
+
         JSONObject json = readSettingsJson(configFile);
         try {
             json.put("selectedAuthType", "openai-compatible");
@@ -152,8 +172,9 @@ public final class IFlowConfigManager {
             json.put("modelName", model);
             // Permanently bypass discontinuation/farewell letter notice
             json.put("hasViewedFarewellLetter", true);
-            // Enable thinking mode by default
-            json.put("thinkingModeEnabled", true);
+            // Coomi-aligned thinking lifecycle configuration
+            json.put("thinkingModeEnabled", enableThinking);
+            json.put("reasoningEffort", effort);
             // Preserve language setting or default to zh-CN
             if (!json.has("language") || json.optString("language").isEmpty()) {
                 json.put("language", "zh-CN");
@@ -176,7 +197,7 @@ public final class IFlowConfigManager {
             fw.write("export COLORTERM=\"truecolor\"\n");
             fw.write("export FORCE_COLOR=\"3\"\n");
             // Thinking mode defaults
-            fw.write("export DEFAULT_REASONING_EFFORT=\"high\"\n");
+            fw.write("export DEFAULT_REASONING_EFFORT=\"" + escapeShell(effort) + "\"\n");
             fw.write("export THINKING_DISPLAY_MODE=\"visible\"\n");
             fw.write("export MAX_THINKING_TOKENS=\"31999\"\n");
             if (!apiKey.isEmpty()) {
@@ -287,7 +308,12 @@ public final class IFlowConfigManager {
     public void ensureProxyRunningIfNeeded(String url) {
         if (url == null || url.isEmpty() || isLocalProxy(url)) {
             if (!CnbProxyServer.getInstance().isRunning() && !CnbProxyServer.getInstance().isStarting()) {
-                CnbProxyServer.getInstance().startAsync(new ProxyConfig.Builder().build());
+                String effort = getReasoningEffort();
+                boolean enableThinking = !"low".equalsIgnoreCase(effort);
+                CnbProxyServer.getInstance().startAsync(new ProxyConfig.Builder()
+                        .setReasoningEffort(effort)
+                        .setEnableThinking(enableThinking)
+                        .build());
             }
         }
     }

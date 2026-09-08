@@ -64,6 +64,8 @@ public class ToolForgeTest {
                 .setModel("deepseek-v4-flash")
                 .setPoolMin(2)
                 .setPoolMax(6)
+                .setReasoningEffort("xhigh")
+                .setEnableThinking(true)
                 .build();
 
         assertEquals(7864, config.getPort());
@@ -71,5 +73,27 @@ public class ToolForgeTest {
         assertEquals(2, config.getPoolMin());
         assertEquals(6, config.getPoolMax());
         assertTrue(config.isForcePromptTools());
+        assertTrue(config.isEnableThinking());
+        assertEquals("xhigh", config.getReasoningEffort());
+    }
+
+    @Test
+    public void testExtractThinking() {
+        String input = "<think>\nLet us analyze the user request step by step.\nFirst check files.\n</think>\nHere is the final answer.";
+        String[] result = ToolForge.extractThinking(input);
+        assertEquals("Let us analyze the user request step by step.\nFirst check files.", result[0]);
+        assertEquals("Here is the final answer.", result[1]);
+
+        // Test with unclosed think tag
+        String unclosed = "<think>Still thinking without closing tag";
+        String[] unclosedResult = ToolForge.extractThinking(unclosed);
+        assertEquals("Still thinking without closing tag", unclosedResult[0]);
+        assertEquals("", unclosedResult[1]);
+
+        // Test without think tag
+        String regular = "Plain text without thinking.";
+        String[] regularResult = ToolForge.extractThinking(regular);
+        assertEquals("", regularResult[0]);
+        assertEquals("Plain text without thinking.", regularResult[1]);
     }
 }

@@ -27,7 +27,7 @@ public class PRootEnginePatchTest {
         bundleDir.mkdirs();
 
         File iflowJs = new File(bundleDir, "iflow.js");
-        File patchFlag = new File(bundleDir, ".card_border_patched_v2");
+        File patchFlag = new File(bundleDir, ".card_border_patched_v3");
 
         String rawContent = "const a = 1;\n" +
                 "// 1. Tool call\n" +
@@ -43,7 +43,9 @@ public class PRootEnginePatchTest {
                 "// 6. Error alert\n" +
                 "zWi=({text:t})=>(0,DJ.jsxs)(ie,{flexDirection:\"row\",marginBottom:1,children:[]});\n" +
                 "// 7. Notice alert\n" +
-                "(0,TJ.jsxs)(ie,{flexDirection:\"row\",marginTop:1,marginBottom:o,children:[]});\n";
+                "(0,TJ.jsxs)(ie,{flexDirection:\"row\",marginTop:1,marginBottom:o,children:[]});\n" +
+                "// 8. Thinking ticker\n" +
+                "color:ae.Comment,italic:!0,children:e?.subject?I.t(\"thinking.thinkingWithSubject\",{subject:e.subject}):I.t(\"thinking.thinking\")+\"...\"}),o&&\n";
 
         try (FileOutputStream fos = new FileOutputStream(iflowJs)) {
             fos.write(rawContent.getBytes(StandardCharsets.UTF_8));
@@ -54,7 +56,7 @@ public class PRootEnginePatchTest {
         // First patch execution
         boolean result = PRootEngine.patchIflowCardBorder(rootfsDir);
         Assert.assertTrue("Patch should succeed", result);
-        Assert.assertTrue("Marker flag v2 file should exist", patchFlag.exists());
+        Assert.assertTrue("Marker flag v3 file should exist", patchFlag.exists());
 
         byte[] patchedBytes = java.nio.file.Files.readAllBytes(iflowJs.toPath());
         String patchedContent = new String(patchedBytes, StandardCharsets.UTF_8);
@@ -86,6 +88,10 @@ public class PRootEnginePatchTest {
         // 7. Notice alert
         Assert.assertTrue("Notice alert should have round yellow border styling",
                 patchedContent.contains("borderStyle:\"round\",borderColor:ae.AccentYellow,paddingX:1,paddingY:0,marginTop:1,marginBottom:o,flexDirection:\"row\""));
+
+        // 8. Thinking ticker
+        Assert.assertTrue("Thinking ticker should have real-time character count injected",
+                patchedContent.contains("d?\" · \"+d.replace(/\\s+/g,\"\").length+\" 字\":\"\""));
 
         // Second patch execution (idempotency check)
         boolean secondResult = PRootEngine.patchIflowCardBorder(rootfsDir);
