@@ -7,6 +7,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,16 +37,18 @@ public final class ProxyOpsDialog {
         CnbProxyServer server = CnbProxyServer.getInstance();
 
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        ScrollView scrollRoot = new ScrollView(activity);
+        scrollRoot.setFillViewport(true);
+
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(UiTheme.dp(activity, 16), UiTheme.dp(activity, 16), UiTheme.dp(activity, 16), UiTheme.dp(activity, 16));
         root.setBackground(UiTheme.roundRect(activity, UiTheme.C_SURFACE, UiTheme.C_BORDER, 1, 10));
+        scrollRoot.addView(root);
 
-        builder.setView(root);
+        builder.setView(scrollRoot);
         AlertDialog dialog = builder.create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
+        UiTheme.configureDialogWindow(dialog);
 
         // Header
         LinearLayout header = new LinearLayout(activity);

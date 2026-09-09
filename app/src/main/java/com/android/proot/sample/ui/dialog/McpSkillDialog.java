@@ -49,9 +49,7 @@ public final class McpSkillDialog {
 
         builder.setView(scrollRoot);
         AlertDialog dialog = builder.create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
+        UiTheme.configureDialogWindow(dialog);
 
         // 1. Header
         LinearLayout header = new LinearLayout(activity);
@@ -557,7 +555,10 @@ public final class McpSkillDialog {
             refreshModeStyles.run();
         });
 
-        b.setView(root);
+        ScrollView scrollRoot = new ScrollView(a);
+        scrollRoot.setFillViewport(true);
+        scrollRoot.addView(root);
+        b.setView(scrollRoot);
         b.setPositiveButton(isEdit ? "保存修改" : "保存", (dialog, which) -> {
             String name = etName.getText().toString().trim();
             if (name.isEmpty()) {
@@ -602,7 +603,9 @@ public final class McpSkillDialog {
             Toast.makeText(a, isEdit ? "已修改 MCP 服务: " + name : "已添加 MCP 服务: " + name, Toast.LENGTH_SHORT).show();
         });
         b.setNegativeButton("取消", null);
-        b.show();
+        AlertDialog dialog = b.create();
+        UiTheme.configureDialogWindow(dialog);
+        dialog.show();
     }
 
     private static void showImportJsonDialog(Activity a, File rootfsDir, McpSkillManager manager, Runnable onImported) {
@@ -688,7 +691,10 @@ public final class McpSkillDialog {
         });
         root.addView(btnStrategy);
 
-        b.setView(root);
+        ScrollView scrollRoot = new ScrollView(a);
+        scrollRoot.setFillViewport(true);
+        scrollRoot.addView(root);
+        b.setView(scrollRoot);
         b.setPositiveButton("确认导入", (dialog, which) -> {
             String text = etJson.getText().toString().trim();
             McpSkillManager.ImportResult res = manager.importMcpServersFromJson(rootfsDir, text, overwrite[0]);
@@ -698,7 +704,9 @@ public final class McpSkillDialog {
             }
         });
         b.setNegativeButton("取消", null);
-        b.show();
+        AlertDialog dialog = b.create();
+        UiTheme.configureDialogWindow(dialog);
+        dialog.show();
     }
 
     private static Map<String, String> parseHeadersInput(String raw) {
@@ -762,7 +770,10 @@ public final class McpSkillDialog {
         root.addView(etDesc);
         root.addView(etPrompt);
 
-        b.setView(root);
+        ScrollView scrollRoot = new ScrollView(a);
+        scrollRoot.setFillViewport(true);
+        scrollRoot.addView(root);
+        b.setView(scrollRoot);
         b.setPositiveButton(isEdit ? "保存修改" : "保存", (dialog, which) -> {
             String id = etId.getText().toString().trim();
             String t = etTitle.getText().toString().trim();
@@ -775,7 +786,9 @@ public final class McpSkillDialog {
             }
         });
         b.setNegativeButton("取消", null);
-        b.show();
+        AlertDialog dialog = b.create();
+        UiTheme.configureDialogWindow(dialog);
+        dialog.show();
     }
 
     private static EditText createInput(Activity a, String hint) {

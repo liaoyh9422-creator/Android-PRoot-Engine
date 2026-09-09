@@ -98,6 +98,7 @@
             android:id="@+id/scroll_sessions"
             android:layout_width="match_parent"
             android:layout_height="320dp"
+            android:fillViewport="true"
             android:scrollbars="vertical"
             android:fadeScrollbars="false">
 

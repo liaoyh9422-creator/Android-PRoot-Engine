@@ -131,6 +131,14 @@ public class UiTheme {
         }
     }
 
+    /** Configures modal dialog Window with soft input adjust resize and transparent background */
+    public static void configureDialogWindow(android.app.Dialog dialog) {
+        if (dialog != null && dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        }
+    }
+
     /**
      * Applies tactile mechanical press feedback (micro-scale + subtle haptic vibration).
      * Returns false in onTouch so standard onClickListeners still fire properly.

@@ -41,9 +41,7 @@ public final class WorkspaceDialog {
         View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_workspaces, null);
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
+        UiTheme.configureDialogWindow(dialog);
 
         TextView badgeActive = dialogView.findViewById(R.id.badge_active_workspace);
         TextView btnClose = dialogView.findViewById(R.id.btn_dialog_close);

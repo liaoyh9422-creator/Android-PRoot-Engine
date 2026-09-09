@@ -50,9 +50,7 @@ public final class FtpConfigDialog {
 
         builder.setView(scrollRoot);
         AlertDialog dialog = builder.create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
+        UiTheme.configureDialogWindow(dialog);
 
         // 1. Header
         LinearLayout header = new LinearLayout(activity);

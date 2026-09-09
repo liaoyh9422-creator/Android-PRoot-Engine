@@ -35,9 +35,7 @@ public final class ProjectCreateDialog {
         View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_project_create, null);
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
+        UiTheme.configureDialogWindow(dialog);
 
         View container = dialogView.findViewById(R.id.dialog_create_container);
         TextView btnClose = dialogView.findViewById(R.id.btn_create_close);

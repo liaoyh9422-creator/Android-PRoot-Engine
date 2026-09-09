@@ -37,9 +37,7 @@ public final class EnvironmentHubDialog {
         View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_environment_hub, null);
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
+        UiTheme.configureDialogWindow(dialog);
 
         View container = dialogView.findViewById(R.id.dialog_env_container);
         TextView btnClose = dialogView.findViewById(R.id.btn_env_close);

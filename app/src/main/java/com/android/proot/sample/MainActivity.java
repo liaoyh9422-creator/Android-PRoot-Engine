@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -210,6 +211,7 @@ public class MainActivity extends Activity {
 
     private void bindViews() {
         rootLayout = findViewById(R.id.root_layout);
+        setupWindowInsets();
         layoutTopBar = findViewById(R.id.layout_top_bar);
         viewTopStatusDot = findViewById(R.id.view_top_status_dot);
         tvActiveSessionBadge = findViewById(R.id.tv_active_session_badge);
@@ -224,6 +226,19 @@ public class MainActivity extends Activity {
         terminalView = findViewById(R.id.terminal_view);
         webViewStudio = findViewById(R.id.web_view_studio);
         setupWebViewStudio();
+    }
+
+    private void setupWindowInsets() {
+        if (rootLayout == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            rootLayout.setOnApplyWindowInsetsListener((v, insets) -> {
+                android.graphics.Insets imeInsets = insets.getInsets(WindowInsets.Type.ime());
+                android.graphics.Insets navInsets = insets.getInsets(WindowInsets.Type.navigationBars());
+                int bottomInset = Math.max(imeInsets.bottom, navInsets.bottom);
+                v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), bottomInset);
+                return insets;
+            });
+        }
     }
 
     private void applyUiTheme() {

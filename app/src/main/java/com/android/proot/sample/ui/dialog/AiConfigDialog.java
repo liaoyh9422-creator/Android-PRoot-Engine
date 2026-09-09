@@ -41,9 +41,7 @@ public final class AiConfigDialog {
         View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_iflow_config, null);
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        }
+        UiTheme.configureDialogWindow(dialog);
 
         TextView tvTitle = dialogView.findViewById(R.id.tv_dialog_title);
         TextView badgeIflow = dialogView.findViewById(R.id.badge_dialog_iflow);
