@@ -16,13 +16,17 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Manages Model Context Protocol (MCP) server definitions and custom Skills for iFlow CLI.
@@ -390,8 +394,17 @@ public final class McpSkillManager {
 
                 int code = conn.getResponseCode();
                 long latency = System.currentTimeMillis() - start;
-                boolean ok = (code >= 200 && code < 400) || code == 401 || code == 403; // 401/403 means server exists but requires auth
-                String detail = code >= 200 && code < 400 ? "连通正常 (" + code + ")" : "服务响应 (" + code + ")";
+                boolean ok = (code >= 200 && code < 400) || code == 401 || code == 403 || code == 405;
+                String detail;
+                if (code >= 200 && code < 400) {
+                    detail = "连通正常 (" + code + ")";
+                } else if (code == 405) {
+                    detail = "端点就绪 (" + code + ")";
+                } else if (code == 401 || code == 403) {
+                    detail = "服务响应 (" + code + ")";
+                } else {
+                    detail = "异常状态 (" + code + ")";
+                }
                 if (callback != null) {
                     callback.onResult(ok, code, latency, detail);
                 }
@@ -403,6 +416,35 @@ public final class McpSkillManager {
                 }
             }
         });
+    }
+
+    /**
+     * Generates the next sequential MCP server name in "mcp-N" format (e.g. mcp-1, mcp-2).
+     */
+    public static String generateNextMcpName(List<McpServer> existingServers) {
+        int maxIndex = 0;
+        Set<String> names = new HashSet<>();
+        Pattern pattern = Pattern.compile("^mcp[-_]?(\\d+)$", Pattern.CASE_INSENSITIVE);
+        if (existingServers != null) {
+            for (McpServer s : existingServers) {
+                if (s != null && s.name != null) {
+                    String n = s.name.trim();
+                    names.add(n.toLowerCase(Locale.ROOT));
+                    Matcher m = pattern.matcher(n);
+                    if (m.matches()) {
+                        try {
+                            int idx = Integer.parseInt(m.group(1));
+                            if (idx > maxIndex) maxIndex = idx;
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+        }
+        int candidate = maxIndex + 1;
+        while (names.contains("mcp-" + candidate) || names.contains("mcp" + candidate)) {
+            candidate++;
+        }
+        return "mcp-" + candidate;
     }
 
     /**

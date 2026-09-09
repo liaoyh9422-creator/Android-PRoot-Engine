@@ -299,4 +299,81 @@ public class McpSkillManagerTest {
         assertTrue(deleted);
         assertFalse(skillFile.exists());
     }
+
+    @Test
+    public void testGenerateNextMcpName() {
+        // 1. Empty list
+        assertEquals("mcp-1", McpSkillManager.generateNextMcpName(new ArrayList<>()));
+
+        // 2. Standard list with mcp-1 and mcp-2
+        List<McpSkillManager.McpServer> list = new ArrayList<>();
+        list.add(new McpSkillManager.McpServer("mcp-1", "echo"));
+        list.add(new McpSkillManager.McpServer("mcp-2", "echo"));
+        assertEquals("mcp-3", McpSkillManager.generateNextMcpName(list));
+
+        // 3. Jump in indices
+        list.add(new McpSkillManager.McpServer("mcp-7", "echo"));
+        assertEquals("mcp-8", McpSkillManager.generateNextMcpName(list));
+
+        // 4. Mixed case and other tools
+        list.add(new McpSkillManager.McpServer("filesystem", "npx"));
+        list.add(new McpSkillManager.McpServer("MCP-10", "uvx"));
+        assertEquals("mcp-11", McpSkillManager.generateNextMcpName(list));
+    }
+
+    @Test
+    public void testEditMcpServer_persistence() {
+        manager.loadMcpServers(tempRootfs);
+
+        List<McpSkillManager.McpServer> servers = manager.loadMcpServers(tempRootfs);
+        McpSkillManager.McpServer toEdit = servers.get(0);
+        String oldName = toEdit.name;
+
+        // Edit properties
+        toEdit.name = "edited-mcp";
+        toEdit.type = "httpstream";
+        toEdit.url = "https://edited.api.com/mcp";
+        toEdit.headers.put("Authorization", "Bearer token-edited");
+
+        boolean saved = manager.saveMcpServers(tempRootfs, servers);
+        assertTrue(saved);
+
+        // Reload and verify edit
+        List<McpSkillManager.McpServer> reloaded = manager.loadMcpServers(tempRootfs);
+        McpSkillManager.McpServer found = null;
+        for (McpSkillManager.McpServer s : reloaded) {
+            if ("edited-mcp".equals(s.name)) {
+                found = s;
+                break;
+            }
+        }
+        assertNotNull(found);
+        assertEquals("httpstream", found.type);
+        assertEquals("https://edited.api.com/mcp", found.url);
+        assertEquals("Bearer token-edited", found.headers.get("Authorization"));
+    }
+
+    @Test
+    public void testEditSkill_persistence() {
+        // Initial creation
+        manager.saveSkill(tempRootfs, "dev-tool", "Initial Title", "Initial Desc", "Initial prompt");
+
+        // Edit skill
+        boolean updated = manager.saveSkill(tempRootfs, "dev-tool", "Updated Title", "Updated Desc", "Updated prompt body");
+        assertTrue(updated);
+
+        // Reload and verify updated content
+        List<McpSkillManager.Skill> skills = manager.loadSkills(tempRootfs);
+        McpSkillManager.Skill found = null;
+        for (McpSkillManager.Skill sk : skills) {
+            if ("dev-tool".equals(sk.id)) {
+                found = sk;
+                break;
+            }
+        }
+        assertNotNull(found);
+        assertEquals("Updated Title", found.title);
+        assertEquals("Updated Desc", found.description);
+        assertEquals("Updated prompt body", found.prompt);
+    }
 }
