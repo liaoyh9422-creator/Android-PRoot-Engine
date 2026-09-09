@@ -102,8 +102,9 @@ public class MainActivity extends Activity {
         PRootEngine.setSharedInstance(engine);
         try {
             startService(new Intent(this, com.android.proot.sample.service.IFlowAidlService.class));
+            com.android.proot.sample.tool.McpSkillManager.getInstance().syncAgyMemoryToIFlow(engine.getRootfsDir());
         } catch (Exception e) {
-            android.util.Log.w("MainActivity", "Failed starting IFlowAidlService: " + e.getMessage());
+            android.util.Log.w("MainActivity", "Failed starting IFlowAidlService / syncing memory: " + e.getMessage());
         }
         workspaceManager = WorkspaceManager.getInstance(this);
         configManager = IFlowConfigManager.getInstance(this);

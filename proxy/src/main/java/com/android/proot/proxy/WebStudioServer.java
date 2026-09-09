@@ -633,6 +633,10 @@ public final class WebStudioServer {
                     body.put("tool_choice", "auto");
 
                     JSONArray messages = new JSONArray();
+                    String sysPrompt = resolveSystemPrompt(sessionId);
+                    if (sysPrompt != null && !sysPrompt.isEmpty()) {
+                        messages.put(new JSONObject().put("role", "system").put("content", sysPrompt));
+                    }
                     synchronized (history) {
                         for (JSONObject m : history) messages.put(m);
                     }
@@ -837,6 +841,59 @@ public final class WebStudioServer {
                 } catch (Exception ignored) {}
             }
         });
+    }
+
+    private String resolveSystemPrompt(String sessionId) {
+        StringBuilder sb = new StringBuilder();
+        String cwd = getSessionCwd(sessionId);
+
+        // 1. Check workspace AGENTS.md / CLAUDE.md
+        if (cwd != null && !cwd.isEmpty()) {
+            File workspaceDir = (rootfsDir != null && cwd.startsWith("/"))
+                    ? new File(rootfsDir, cwd.substring(1))
+                    : new File(cwd);
+            File agentsFile = new File(workspaceDir, "AGENTS.md");
+            if (agentsFile.exists() && agentsFile.isFile()) {
+                String content = readTextFile(agentsFile);
+                if (!content.isEmpty()) {
+                    sb.append(content).append("\n\n");
+                }
+            } else {
+                File claudeFile = new File(workspaceDir, "CLAUDE.md");
+                if (claudeFile.exists() && claudeFile.isFile()) {
+                    String content = readTextFile(claudeFile);
+                    if (!content.isEmpty()) {
+                        sb.append(content).append("\n\n");
+                    }
+                }
+            }
+        }
+
+        // 2. Check global ~/.iflow/rules
+        if (rootfsDir != null) {
+            File globalRules = new File(rootfsDir, "root/.iflow/rules");
+            if (globalRules.exists() && globalRules.isFile()) {
+                String content = readTextFile(globalRules);
+                if (!content.isEmpty()) {
+                    sb.append(content).append("\n\n");
+                }
+            }
+        }
+
+        return sb.toString().trim();
+    }
+
+    private static String readTextFile(File f) {
+        if (f == null || !f.exists()) return "";
+        try (FileInputStream fis = new FileInputStream(f);
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = fis.read(buf)) != -1) baos.write(buf, 0, n);
+            return baos.toString(StandardCharsets.UTF_8.name());
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     private static JSONObject parseArguments(Object argsObj) {

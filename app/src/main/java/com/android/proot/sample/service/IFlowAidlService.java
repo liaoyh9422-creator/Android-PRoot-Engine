@@ -16,22 +16,27 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Android Service exposing IIFlowService AIDL Binder IPC and abstract LocalSocket bridge.
+ * Android Service exposing IIFlowService AIDL Binder IPC and dual-channel bridge (LocalSocket + Loopback TCP).
  * Discovered by Termux and external Android apps via action "com.android.proot.action.IFLOW_SERVICE".
  */
 public class IFlowAidlService extends Service {
     private static final String TAG = "IFlowAidlService";
     public static final String ACTION_IFLOW_SERVICE = "com.android.proot.action.IFLOW_SERVICE";
     public static final String ABSTRACT_SOCKET_NAME = "iflow_ipc_socket";
+    public static final int LOOPBACK_IPC_PORT = 7862;
 
     private IFlowIpcDispatcher dispatcher;
     private final ExecutorService socketExecutor = Executors.newCachedThreadPool();
     private volatile LocalServerSocket localServerSocket;
+    private volatile ServerSocket loopbackServerSocket;
     private volatile boolean isListening = false;
 
     private final IIFlowService.Stub mBinder = new IIFlowService.Stub() {
@@ -85,9 +90,9 @@ public class IFlowAidlService extends Service {
     public void onCreate() {
         super.onCreate();
         dispatcher = IFlowIpcDispatcher.getInstance(this);
-        startAbstractSocketBridge();
+        startIpcBridges();
         deployTermuxHelperScript();
-        Log.i(TAG, "IFlowAidlService started and ready for AIDL and LocalSocket IPC.");
+        Log.i(TAG, "IFlowAidlService started and ready for AIDL, LocalSocket, and 127.0.0.1:7862 IPC.");
     }
 
     @Override
@@ -105,33 +110,55 @@ public class IFlowAidlService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        stopAbstractSocketBridge();
+        stopIpcBridges();
         Log.i(TAG, "IFlowAidlService destroyed.");
     }
 
-    private void startAbstractSocketBridge() {
+    private void startIpcBridges() {
+        isListening = true;
+
+        // 1. Abstract Unix domain socket for local UID
         socketExecutor.execute(() -> {
             try {
                 localServerSocket = new LocalServerSocket(ABSTRACT_SOCKET_NAME);
-                isListening = true;
                 Log.i(TAG, "LocalServerSocket listening on abstract @" + ABSTRACT_SOCKET_NAME);
 
                 while (isListening && localServerSocket != null) {
                     try {
                         LocalSocket client = localServerSocket.accept();
-                        handleSocketClient(client);
+                        handleLocalSocketClient(client);
                     } catch (Exception e) {
                         if (!isListening) break;
                         Log.w(TAG, "LocalSocket accept error: " + e.getMessage());
                     }
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Failed creating LocalServerSocket: " + e.getMessage());
+                Log.w(TAG, "Failed creating LocalServerSocket: " + e.getMessage());
+            }
+        });
+
+        // 2. Localhost loopback TCP socket (127.0.0.1:7862) to bypass Android 10+ SELinux cross-UID block
+        socketExecutor.execute(() -> {
+            try {
+                loopbackServerSocket = new ServerSocket(LOOPBACK_IPC_PORT, 50, InetAddress.getByName("127.0.0.1"));
+                Log.i(TAG, "Loopback ServerSocket listening on 127.0.0.1:" + LOOPBACK_IPC_PORT);
+
+                while (isListening && loopbackServerSocket != null) {
+                    try {
+                        Socket client = loopbackServerSocket.accept();
+                        handleTcpSocketClient(client);
+                    } catch (Exception e) {
+                        if (!isListening) break;
+                        Log.w(TAG, "TCP ServerSocket accept error: " + e.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed creating loopback ServerSocket on " + LOOPBACK_IPC_PORT + ": " + e.getMessage());
             }
         });
     }
 
-    private void handleSocketClient(LocalSocket client) {
+    private void handleLocalSocketClient(LocalSocket client) {
         socketExecutor.execute(() -> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
                  BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(client.getOutputStream(), StandardCharsets.UTF_8))) {
@@ -151,12 +178,38 @@ public class IFlowAidlService extends Service {
         });
     }
 
-    private void stopAbstractSocketBridge() {
+    private void handleTcpSocketClient(Socket client) {
+        socketExecutor.execute(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
+                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(client.getOutputStream(), StandardCharsets.UTF_8))) {
+
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty()) continue;
+                    String resp = dispatcher.handleJsonRequest(line);
+                    writer.write(resp);
+                    writer.write("\n");
+                    writer.flush();
+                }
+            } catch (Exception ignored) {
+            } finally {
+                try { client.close(); } catch (Exception ignored) {}
+            }
+        });
+    }
+
+    private void stopIpcBridges() {
         isListening = false;
         try {
             if (localServerSocket != null) {
                 localServerSocket.close();
                 localServerSocket = null;
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (loopbackServerSocket != null) {
+                loopbackServerSocket.close();
+                loopbackServerSocket = null;
             }
         } catch (Exception ignored) {}
         socketExecutor.shutdownNow();
@@ -170,7 +223,7 @@ public class IFlowAidlService extends Service {
         socketExecutor.execute(() -> {
             try {
                 String script = "#!/usr/bin/env bash\n" +
-                        "# iflow-ipc: Zero-network bridge to iFlow Android AIDL & LocalSocket Service\n" +
+                        "# iflow-ipc: Zero-network bridge to iFlow Android AIDL & LocalSocket/TCP Service\n" +
                         "PYTHON_BIN=$(command -v python3 || command -v python || true)\n" +
                         "if [ -z \"$PYTHON_BIN\" ]; then\n" +
                         "  echo \"Error: python3 is required in Termux for iflow-ipc bridge.\"\n" +
@@ -180,9 +233,20 @@ public class IFlowAidlService extends Service {
                         "  status|ports|config)\n" +
                         "    \"$PYTHON_BIN\" -c '\n" +
                         "import socket, sys, json\n" +
-                        "s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)\n" +
+                        "def get_conn():\n" +
+                        "    try:\n" +
+                        "        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n" +
+                        "        s.settimeout(2.0)\n" +
+                        "        s.connect((\"127.0.0.1\", 7862))\n" +
+                        "        s.settimeout(None)\n" +
+                        "        return s\n" +
+                        "    except Exception:\n" +
+                        "        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)\n" +
+                        "        s.connect(\"\\0iflow_ipc_socket\")\n" +
+                        "        return s\n" +
+                        "s = None\n" +
                         "try:\n" +
-                        "    s.connect(\"\\0iflow_ipc_socket\")\n" +
+                        "    s = get_conn()\n" +
                         "    s.sendall(json.dumps({\"action\": sys.argv[1]}).encode(\"utf-8\") + b\"\\n\")\n" +
                         "    res = s.recv(16384).decode(\"utf-8\").strip()\n" +
                         "    print(res)\n" +
@@ -190,7 +254,7 @@ public class IFlowAidlService extends Service {
                         "    print(f\"[Error connecting to iFlow IPC]: {e}\")\n" +
                         "    sys.exit(1)\n" +
                         "finally:\n" +
-                        "    s.close()\n" +
+                        "    if s: s.close()\n" +
                         "' \"$1\"\n" +
                         "    ;;\n" +
                         "  exec)\n" +
@@ -202,9 +266,20 @@ public class IFlowAidlService extends Service {
                         "    fi\n" +
                         "    \"$PYTHON_BIN\" -c '\n" +
                         "import socket, sys, json\n" +
-                        "s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)\n" +
+                        "def get_conn():\n" +
+                        "    try:\n" +
+                        "        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n" +
+                        "        s.settimeout(2.0)\n" +
+                        "        s.connect((\"127.0.0.1\", 7862))\n" +
+                        "        s.settimeout(None)\n" +
+                        "        return s\n" +
+                        "    except Exception:\n" +
+                        "        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)\n" +
+                        "        s.connect(\"\\0iflow_ipc_socket\")\n" +
+                        "        return s\n" +
+                        "s = None\n" +
                         "try:\n" +
-                        "    s.connect(\"\\0iflow_ipc_socket\")\n" +
+                        "    s = get_conn()\n" +
                         "    payload = {\"action\": \"exec\", \"command\": sys.argv[1]}\n" +
                         "    s.sendall(json.dumps(payload).encode(\"utf-8\") + b\"\\n\")\n" +
                         "    res = s.recv(65536).decode(\"utf-8\").strip()\n" +
@@ -217,15 +292,26 @@ public class IFlowAidlService extends Service {
                         "    print(f\"[Error connecting to iFlow IPC]: {e}\")\n" +
                         "    sys.exit(1)\n" +
                         "finally:\n" +
-                        "    s.close()\n" +
+                        "    if s: s.close()\n" +
                         "' \"$CMD\"\n" +
                         "    ;;\n" +
                         "  workspace)\n" +
                         "    \"$PYTHON_BIN\" -c '\n" +
                         "import socket, sys, json\n" +
-                        "s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)\n" +
+                        "def get_conn():\n" +
+                        "    try:\n" +
+                        "        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n" +
+                        "        s.settimeout(2.0)\n" +
+                        "        s.connect((\"127.0.0.1\", 7862))\n" +
+                        "        s.settimeout(None)\n" +
+                        "        return s\n" +
+                        "    except Exception:\n" +
+                        "        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)\n" +
+                        "        s.connect(\"\\0iflow_ipc_socket\")\n" +
+                        "        return s\n" +
+                        "s = None\n" +
                         "try:\n" +
-                        "    s.connect(\"\\0iflow_ipc_socket\")\n" +
+                        "    s = get_conn()\n" +
                         "    payload = {\"action\": \"workspace\"}\n" +
                         "    if len(sys.argv) > 1 and sys.argv[1]:\n" +
                         "        payload[\"path\"] = sys.argv[1]\n" +
@@ -235,15 +321,26 @@ public class IFlowAidlService extends Service {
                         "    print(f\"[Error connecting to iFlow IPC]: {e}\")\n" +
                         "    sys.exit(1)\n" +
                         "finally:\n" +
-                        "    s.close()\n" +
+                        "    if s: s.close()\n" +
                         "' \"$2\"\n" +
                         "    ;;\n" +
                         "  service)\n" +
                         "    \"$PYTHON_BIN\" -c '\n" +
                         "import socket, sys, json\n" +
-                        "s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)\n" +
+                        "def get_conn():\n" +
+                        "    try:\n" +
+                        "        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n" +
+                        "        s.settimeout(2.0)\n" +
+                        "        s.connect((\"127.0.0.1\", 7862))\n" +
+                        "        s.settimeout(None)\n" +
+                        "        return s\n" +
+                        "    except Exception:\n" +
+                        "        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)\n" +
+                        "        s.connect(\"\\0iflow_ipc_socket\")\n" +
+                        "        return s\n" +
+                        "s = None\n" +
                         "try:\n" +
-                        "    s.connect(\"\\0iflow_ipc_socket\")\n" +
+                        "    s = get_conn()\n" +
                         "    payload = {\"action\": \"service\", \"name\": sys.argv[1], \"op\": sys.argv[2]}\n" +
                         "    s.sendall(json.dumps(payload).encode(\"utf-8\") + b\"\\n\")\n" +
                         "    print(s.recv(16384).decode(\"utf-8\").strip())\n" +
@@ -251,7 +348,7 @@ public class IFlowAidlService extends Service {
                         "    print(f\"[Error connecting to iFlow IPC]: {e}\")\n" +
                         "    sys.exit(1)\n" +
                         "finally:\n" +
-                        "    s.close()\n" +
+                        "    if s: s.close()\n" +
                         "' \"$2\" \"${3:-start}\"\n" +
                         "    ;;\n" +
                         "  *)\n" +

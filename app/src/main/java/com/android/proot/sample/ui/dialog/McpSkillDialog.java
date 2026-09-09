@@ -2,6 +2,8 @@ package com.android.proot.sample.ui.dialog;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
@@ -18,7 +20,9 @@ import com.android.proot.sample.ui.UiTheme;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Modern modal dialog for managing Model Context Protocol (MCP) server configurations
@@ -138,7 +142,7 @@ public final class McpSkillDialog {
         List<McpSkillManager.McpServer> servers = manager.loadMcpServers(rootfsDir);
 
         TextView tvDesc = new TextView(a);
-        tvDesc.setText("Model Context Protocol (MCP) 为 iFlow 提供外部工具调用（文件感知、网络、ADB）。修改即时生效于 ~/.iflow/settings.json。");
+        tvDesc.setText("Model Context Protocol (MCP) 为 iFlow 提供外部工具调用（文件感知、网络、ADB）。支持本地 Stdio 进程与远程 SSE / httpStream 云端服务。");
         tvDesc.setTextColor(Color.parseColor(UiTheme.C_DIM));
         tvDesc.setTextSize(11f);
         tvDesc.setPadding(0, 0, 0, UiTheme.dp(a, 8));
@@ -166,21 +170,63 @@ public final class McpSkillDialog {
             LinearLayout.LayoutParams infoLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
             infoCol.setLayoutParams(infoLp);
 
+            LinearLayout titleRow = new LinearLayout(a);
+            titleRow.setOrientation(LinearLayout.HORIZONTAL);
+            titleRow.setGravity(Gravity.CENTER_VERTICAL);
+
+            String effType = s.getEffectiveType();
+            String badgeColor = "sse".equalsIgnoreCase(effType) ? UiTheme.C_GREEN : ("httpstream".equalsIgnoreCase(effType) ? UiTheme.C_PURPLE : UiTheme.C_CYAN);
+            String badgeBg = "sse".equalsIgnoreCase(effType) ? UiTheme.C_GREEN_BG : ("httpstream".equalsIgnoreCase(effType) ? UiTheme.C_PURPLE_BG : UiTheme.C_CYAN_BG);
+            TextView tvBadge = UiTheme.createButton(a, effType.toUpperCase(), badgeColor, badgeBg, badgeColor, 3);
+            tvBadge.setTextSize(9f);
+            tvBadge.setPadding(UiTheme.dp(a, 4), UiTheme.dp(a, 1), UiTheme.dp(a, 4), UiTheme.dp(a, 1));
+            titleRow.addView(tvBadge);
+
             TextView tvName = new TextView(a);
-            tvName.setText(s.name);
-            tvName.setTextColor(Color.parseColor(s.enabled ? UiTheme.C_CYAN : UiTheme.C_DIM));
+            tvName.setText("  " + s.name);
+            tvName.setTextColor(Color.parseColor(s.enabled ? UiTheme.C_TEXT : UiTheme.C_DIM));
             tvName.setTextSize(12.5f);
             tvName.setTypeface(Typeface.DEFAULT_BOLD);
-            infoCol.addView(tvName);
+            titleRow.addView(tvName);
 
-            TextView tvCmd = new TextView(a);
-            String fullCmd = s.command + " " + String.join(" ", s.args);
-            tvCmd.setText(fullCmd);
-            tvCmd.setTextColor(Color.parseColor(UiTheme.C_DIM));
-            tvCmd.setTextSize(10.5f);
-            tvCmd.setTypeface(Typeface.MONOSPACE);
-            infoCol.addView(tvCmd);
+            infoCol.addView(titleRow);
+
+            TextView tvDetail = new TextView(a);
+            if (s.isRemote()) {
+                String detail = s.url;
+                if (s.headers != null && !s.headers.isEmpty()) {
+                    detail += " (" + s.headers.size() + " headers)";
+                }
+                tvDetail.setText(detail);
+            } else {
+                String fullCmd = s.command + (s.args.isEmpty() ? "" : " " + String.join(" ", s.args));
+                tvDetail.setText(fullCmd);
+            }
+            tvDetail.setTextColor(Color.parseColor(UiTheme.C_DIM));
+            tvDetail.setTextSize(10.5f);
+            tvDetail.setTypeface(Typeface.MONOSPACE);
+            infoCol.addView(tvDetail);
             item.addView(infoCol);
+
+            // Ping Button for Remote Servers
+            if (s.isRemote()) {
+                TextView btnPing = UiTheme.createButton(a, "⚡Ping", UiTheme.C_YELLOW, UiTheme.C_SURFACE, UiTheme.C_BORDER, 4);
+                btnPing.setPadding(UiTheme.dp(a, 6), UiTheme.dp(a, 3), UiTheme.dp(a, 6), UiTheme.dp(a, 3));
+                btnPing.setTextSize(10f);
+                btnPing.setOnClickListener(v -> {
+                    btnPing.setText("⏳...");
+                    manager.pingRemoteServer(s.url, s.headers, (ok, code, lat, detail) -> {
+                        a.runOnUiThread(() -> {
+                            btnPing.setText(ok ? "🟢" + lat + "ms" : "🔴" + (code > 0 ? code : "Err"));
+                            Toast.makeText(a, s.name + ": " + detail + " (" + lat + "ms)", Toast.LENGTH_SHORT).show();
+                        });
+                    });
+                });
+                LinearLayout.LayoutParams pingLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                pingLp.setMarginEnd(UiTheme.dp(a, 6));
+                btnPing.setLayoutParams(pingLp);
+                item.addView(btnPing);
+            }
 
             // Toggle Button
             TextView btnToggle = UiTheme.createButton(a, s.enabled ? "已启用" : "已停用",
@@ -200,7 +246,7 @@ public final class McpSkillDialog {
             TextView btnDel = new TextView(a);
             btnDel.setText("✕");
             btnDel.setTextColor(Color.parseColor(UiTheme.C_DIM));
-            btnDel.setPadding(UiTheme.dp(a, 8), UiTheme.dp(a, 4), UiTheme.dp(a, 4), UiTheme.dp(a, 4));
+            btnDel.setPadding(UiTheme.dp(a, 8), UiTheme.dp(a, 4), UiTheme.dp(a, 8), UiTheme.dp(a, 4));
             btnDel.setOnClickListener(v -> {
                 servers.remove(s);
                 manager.saveMcpServers(rootfsDir, servers);
@@ -211,13 +257,26 @@ public final class McpSkillDialog {
             listLayout.addView(item);
         }
 
-        // Add Custom MCP Button
-        TextView btnAdd = UiTheme.createButton(a, "➕ 添加自定义 MCP 服务", UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER, 6);
-        LinearLayout.LayoutParams addLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, UiTheme.dp(a, 36));
-        addLp.topMargin = UiTheme.dp(a, 6);
-        btnAdd.setLayoutParams(addLp);
+        // Action Buttons Row (Add Single + Import JSON)
+        LinearLayout actionRow = new LinearLayout(a);
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionRow.setPadding(0, UiTheme.dp(a, 6), 0, 0);
+
+        TextView btnAdd = UiTheme.createButton(a, "➕ 添加单个服务", UiTheme.C_TEXT, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER, 6);
+        TextView btnImportJson = UiTheme.createButton(a, "📋 批量 JSON 导入", UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN, 6);
+
+        LinearLayout.LayoutParams b1 = new LinearLayout.LayoutParams(0, UiTheme.dp(a, 36), 1);
+        btnAdd.setLayoutParams(b1);
+        LinearLayout.LayoutParams b2 = new LinearLayout.LayoutParams(0, UiTheme.dp(a, 36), 1);
+        b2.setMarginStart(UiTheme.dp(a, 8));
+        btnImportJson.setLayoutParams(b2);
+
         btnAdd.setOnClickListener(v -> showAddMcpDialog(a, rootfsDir, manager, servers, () -> renderMcpTab(a, rootfsDir, manager, container)));
-        container.addView(btnAdd);
+        btnImportJson.setOnClickListener(v -> showImportJsonDialog(a, rootfsDir, manager, () -> renderMcpTab(a, rootfsDir, manager, container)));
+
+        actionRow.addView(btnAdd);
+        actionRow.addView(btnImportJson);
+        container.addView(actionRow);
     }
 
     private static void renderSkillTab(Activity a, File rootfsDir, McpSkillManager manager, LinearLayout container) {
@@ -321,34 +380,280 @@ public final class McpSkillDialog {
         title.setTypeface(Typeface.DEFAULT_BOLD);
         root.addView(title);
 
-        EditText etName = createInput(a, "服务标识 (如 sqlite / fetch)");
+        // Protocol Mode Toggle (SSE vs httpStream vs Stdio)
+        final String[] activeType = new String[]{"sse"};
+        LinearLayout rowMode = new LinearLayout(a);
+        rowMode.setOrientation(LinearLayout.HORIZONTAL);
+        rowMode.setPadding(0, UiTheme.dp(a, 8), 0, UiTheme.dp(a, 8));
+
+        TextView btnModeSse = UiTheme.createButton(a, "🌐 远程 SSE", UiTheme.C_GREEN, UiTheme.C_GREEN_BG, UiTheme.C_GREEN, 5);
+        TextView btnModeStream = UiTheme.createButton(a, "🌊 远程 Stream", UiTheme.C_DIM, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB, 5);
+        TextView btnModeStdio = UiTheme.createButton(a, "💻 本地 Stdio", UiTheme.C_DIM, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB, 5);
+
+        LinearLayout.LayoutParams m1 = new LinearLayout.LayoutParams(0, UiTheme.dp(a, 30), 1);
+        btnModeSse.setLayoutParams(m1);
+        LinearLayout.LayoutParams m2 = new LinearLayout.LayoutParams(0, UiTheme.dp(a, 30), 1);
+        m2.setMarginStart(UiTheme.dp(a, 4));
+        btnModeStream.setLayoutParams(m2);
+        LinearLayout.LayoutParams m3 = new LinearLayout.LayoutParams(0, UiTheme.dp(a, 30), 1);
+        m3.setMarginStart(UiTheme.dp(a, 4));
+        btnModeStdio.setLayoutParams(m3);
+
+        rowMode.addView(btnModeSse);
+        rowMode.addView(btnModeStream);
+        rowMode.addView(btnModeStdio);
+        root.addView(rowMode);
+
+        EditText etName = createInput(a, "服务标识 (如 cloud-db / fetch)");
+        root.addView(etName);
+
+        // Remote Inputs Container
+        LinearLayout remoteLayout = new LinearLayout(a);
+        remoteLayout.setOrientation(LinearLayout.VERTICAL);
+
+        EditText etUrl = createInput(a, "服务 URL (如 https://api.domain.com/sse)");
+        EditText etHeaders = createInput(a, "鉴权 Headers (可选，如 Authorization: Bearer xxx)");
+        remoteLayout.addView(etUrl);
+        remoteLayout.addView(etHeaders);
+
+        // Remote Ping Tester in Dialog
+        LinearLayout pingRow = new LinearLayout(a);
+        pingRow.setOrientation(LinearLayout.HORIZONTAL);
+        pingRow.setGravity(Gravity.CENTER_VERTICAL);
+        pingRow.setPadding(0, UiTheme.dp(a, 4), 0, UiTheme.dp(a, 4));
+
+        TextView btnTestPing = UiTheme.createButton(a, "⚡ 测试连通性", UiTheme.C_YELLOW, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER, 4);
+        btnTestPing.setPadding(UiTheme.dp(a, 8), UiTheme.dp(a, 4), UiTheme.dp(a, 8), UiTheme.dp(a, 4));
+        btnTestPing.setTextSize(10.5f);
+
+        TextView tvPingResult = new TextView(a);
+        tvPingResult.setTextColor(Color.parseColor(UiTheme.C_DIM));
+        tvPingResult.setTextSize(10f);
+        tvPingResult.setPadding(UiTheme.dp(a, 8), 0, 0, 0);
+
+        btnTestPing.setOnClickListener(v -> {
+            String u = etUrl.getText().toString().trim();
+            if (u.isEmpty()) {
+                tvPingResult.setText("⚠️ 请先输入 URL");
+                tvPingResult.setTextColor(Color.parseColor(UiTheme.C_YELLOW));
+                return;
+            }
+            tvPingResult.setText("⏳ 正在探测连通性...");
+            tvPingResult.setTextColor(Color.parseColor(UiTheme.C_DIM));
+            Map<String, String> h = parseHeadersInput(etHeaders.getText().toString());
+            manager.pingRemoteServer(u, h, (ok, code, lat, detail) -> {
+                a.runOnUiThread(() -> {
+                    tvPingResult.setText(detail + " (" + lat + "ms)");
+                    tvPingResult.setTextColor(Color.parseColor(ok ? UiTheme.C_GREEN : UiTheme.C_RED));
+                });
+            });
+        });
+
+        pingRow.addView(btnTestPing);
+        pingRow.addView(tvPingResult);
+        remoteLayout.addView(pingRow);
+
+        // Stdio Inputs Container
+        LinearLayout stdioLayout = new LinearLayout(a);
+        stdioLayout.setOrientation(LinearLayout.VERTICAL);
+        stdioLayout.setVisibility(View.GONE);
+
         EditText etCmd = createInput(a, "执行命令 (如 npx / node / python3)");
         EditText etArgs = createInput(a, "运行参数 (空格隔开，如 -y @mcp/server)");
+        stdioLayout.addView(etCmd);
+        stdioLayout.addView(etArgs);
 
-        root.addView(etName);
-        root.addView(etCmd);
-        root.addView(etArgs);
+        root.addView(remoteLayout);
+        root.addView(stdioLayout);
+
+        // Mode Switching
+        btnModeSse.setOnClickListener(v -> {
+            activeType[0] = "sse";
+            btnModeSse.setTextColor(Color.parseColor(UiTheme.C_GREEN));
+            btnModeSse.setBackground(UiTheme.roundRect(a, UiTheme.C_GREEN_BG, UiTheme.C_GREEN, 1, 5));
+            btnModeStream.setTextColor(Color.parseColor(UiTheme.C_DIM));
+            btnModeStream.setBackground(UiTheme.roundRect(a, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB, 1, 5));
+            btnModeStdio.setTextColor(Color.parseColor(UiTheme.C_DIM));
+            btnModeStdio.setBackground(UiTheme.roundRect(a, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB, 1, 5));
+            remoteLayout.setVisibility(View.VISIBLE);
+            stdioLayout.setVisibility(View.GONE);
+        });
+
+        btnModeStream.setOnClickListener(v -> {
+            activeType[0] = "httpstream";
+            btnModeStream.setTextColor(Color.parseColor(UiTheme.C_PURPLE));
+            btnModeStream.setBackground(UiTheme.roundRect(a, UiTheme.C_PURPLE_BG, UiTheme.C_PURPLE, 1, 5));
+            btnModeSse.setTextColor(Color.parseColor(UiTheme.C_DIM));
+            btnModeSse.setBackground(UiTheme.roundRect(a, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB, 1, 5));
+            btnModeStdio.setTextColor(Color.parseColor(UiTheme.C_DIM));
+            btnModeStdio.setBackground(UiTheme.roundRect(a, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB, 1, 5));
+            remoteLayout.setVisibility(View.VISIBLE);
+            stdioLayout.setVisibility(View.GONE);
+        });
+
+        btnModeStdio.setOnClickListener(v -> {
+            activeType[0] = "stdio";
+            btnModeStdio.setTextColor(Color.parseColor(UiTheme.C_CYAN));
+            btnModeStdio.setBackground(UiTheme.roundRect(a, UiTheme.C_CYAN_BG, UiTheme.C_CYAN, 1, 5));
+            btnModeSse.setTextColor(Color.parseColor(UiTheme.C_DIM));
+            btnModeSse.setBackground(UiTheme.roundRect(a, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB, 1, 5));
+            btnModeStream.setTextColor(Color.parseColor(UiTheme.C_DIM));
+            btnModeStream.setBackground(UiTheme.roundRect(a, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB, 1, 5));
+            remoteLayout.setVisibility(View.GONE);
+            stdioLayout.setVisibility(View.VISIBLE);
+        });
 
         b.setView(root);
         b.setPositiveButton("保存", (dialog, which) -> {
             String name = etName.getText().toString().trim();
-            String cmd = etCmd.getText().toString().trim();
-            String argsStr = etArgs.getText().toString().trim();
-            if (!name.isEmpty() && !cmd.isEmpty()) {
-                McpSkillManager.McpServer s = new McpSkillManager.McpServer(name, cmd);
+            if (name.isEmpty()) {
+                Toast.makeText(a, "服务标识不能为空", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            McpSkillManager.McpServer s;
+            if ("stdio".equals(activeType[0])) {
+                String cmd = etCmd.getText().toString().trim();
+                String argsStr = etArgs.getText().toString().trim();
+                s = new McpSkillManager.McpServer(name, cmd);
                 if (!argsStr.isEmpty()) {
-                    for (String p : argsStr.split("\\s+")) {
-                        s.args.add(p);
+                    for (String p : argsStr.split("\\s+")) s.args.add(p);
+                }
+            } else {
+                String url = etUrl.getText().toString().trim();
+                s = new McpSkillManager.McpServer(name, activeType[0], url);
+                s.headers.putAll(parseHeadersInput(etHeaders.getText().toString()));
+            }
+
+            servers.add(s);
+            manager.saveMcpServers(rootfsDir, servers);
+            if (onSaved != null) onSaved.run();
+            Toast.makeText(a, "已添加 MCP 服务: " + name, Toast.LENGTH_SHORT).show();
+        });
+        b.setNegativeButton("取消", null);
+        b.show();
+    }
+
+    private static void showImportJsonDialog(Activity a, File rootfsDir, McpSkillManager manager, Runnable onImported) {
+        AlertDialog.Builder b = new AlertDialog.Builder(a);
+        LinearLayout root = new LinearLayout(a);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiTheme.dp(a, 16), UiTheme.dp(a, 16), UiTheme.dp(a, 16), UiTheme.dp(a, 16));
+        root.setBackground(UiTheme.roundRect(a, UiTheme.C_SURFACE, UiTheme.C_BORDER, 1, 8));
+
+        TextView title = new TextView(a);
+        title.setText("📋 批量导入 MCP 配置 (JSON)");
+        title.setTextColor(Color.parseColor(UiTheme.C_TEXT));
+        title.setTextSize(14f);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        root.addView(title);
+
+        TextView sub = new TextView(a);
+        sub.setText("支持粘贴 Claude Desktop、Cursor 配置或 mcpServers 字典");
+        sub.setTextColor(Color.parseColor(UiTheme.C_DIM));
+        sub.setTextSize(10.5f);
+        sub.setPadding(0, UiTheme.dp(a, 2), 0, UiTheme.dp(a, 8));
+        root.addView(sub);
+
+        EditText etJson = new EditText(a);
+        etJson.setHint("{\n  \"mcpServers\": {\n    \"example\": { \"type\": \"sse\", \"url\": \"...\" }\n  }\n}");
+        etJson.setHintTextColor(Color.parseColor(UiTheme.C_DIM));
+        etJson.setTextColor(Color.parseColor(UiTheme.C_TEXT));
+        etJson.setBackground(UiTheme.roundRect(a, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER, 1, 6));
+        etJson.setTextSize(11f);
+        etJson.setTypeface(Typeface.MONOSPACE);
+        etJson.setMinLines(5);
+        etJson.setMaxLines(10);
+        etJson.setGravity(Gravity.TOP);
+        etJson.setPadding(UiTheme.dp(a, 10), UiTheme.dp(a, 8), UiTheme.dp(a, 10), UiTheme.dp(a, 8));
+        root.addView(etJson);
+
+        // Buttons row (Paste & Clear)
+        LinearLayout rowBtn = new LinearLayout(a);
+        rowBtn.setOrientation(LinearLayout.HORIZONTAL);
+        rowBtn.setPadding(0, UiTheme.dp(a, 8), 0, UiTheme.dp(a, 8));
+
+        TextView btnPaste = UiTheme.createButton(a, "📋 从剪贴板粘贴", UiTheme.C_CYAN, UiTheme.C_CYAN_BG, UiTheme.C_CYAN, 4);
+        btnPaste.setPadding(UiTheme.dp(a, 8), UiTheme.dp(a, 4), UiTheme.dp(a, 8), UiTheme.dp(a, 4));
+        btnPaste.setTextSize(10.5f);
+        btnPaste.setOnClickListener(v -> {
+            try {
+                ClipboardManager cm = (ClipboardManager) a.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip().getItemCount() > 0) {
+                    CharSequence clipText = cm.getPrimaryClip().getItemAt(0).getText();
+                    if (clipText != null && clipText.length() > 0) {
+                        etJson.setText(clipText.toString());
+                        Toast.makeText(a, "已从剪贴板粘贴", Toast.LENGTH_SHORT).show();
                     }
                 }
-                servers.add(s);
-                manager.saveMcpServers(rootfsDir, servers);
-                if (onSaved != null) onSaved.run();
-                Toast.makeText(a, "已添加 MCP 服务: " + name, Toast.LENGTH_SHORT).show();
+            } catch (Exception ignored) {}
+        });
+
+        TextView btnClear = UiTheme.createButton(a, "🔄 清空", UiTheme.C_DIM, UiTheme.C_SURFACE_ALT, UiTheme.C_BORDER_SUB, 4);
+        btnClear.setPadding(UiTheme.dp(a, 8), UiTheme.dp(a, 4), UiTheme.dp(a, 8), UiTheme.dp(a, 4));
+        btnClear.setTextSize(10.5f);
+        btnClear.setOnClickListener(v -> etJson.setText(""));
+
+        LinearLayout.LayoutParams p1 = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        btnPaste.setLayoutParams(p1);
+        LinearLayout.LayoutParams p2 = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        p2.setMarginStart(UiTheme.dp(a, 8));
+        btnClear.setLayoutParams(p2);
+
+        rowBtn.addView(btnPaste);
+        rowBtn.addView(btnClear);
+        root.addView(rowBtn);
+
+        // Overwrite toggle button
+        final boolean[] overwrite = new boolean[]{true};
+        TextView btnStrategy = UiTheme.createButton(a, "冲突处理: 覆盖已有服务", UiTheme.C_GREEN, UiTheme.C_GREEN_BG, UiTheme.C_GREEN, 4);
+        btnStrategy.setPadding(UiTheme.dp(a, 8), UiTheme.dp(a, 4), UiTheme.dp(a, 8), UiTheme.dp(a, 4));
+        btnStrategy.setTextSize(10.5f);
+        btnStrategy.setOnClickListener(v -> {
+            overwrite[0] = !overwrite[0];
+            btnStrategy.setText(overwrite[0] ? "冲突处理: 覆盖已有服务" : "冲突处理: 跳过重复保留原样");
+            btnStrategy.setTextColor(Color.parseColor(overwrite[0] ? UiTheme.C_GREEN : UiTheme.C_DIM));
+            btnStrategy.setBackground(UiTheme.roundRect(a, overwrite[0] ? UiTheme.C_GREEN_BG : UiTheme.C_SURFACE_ALT, overwrite[0] ? UiTheme.C_GREEN : UiTheme.C_BORDER, 1, 4));
+        });
+        root.addView(btnStrategy);
+
+        b.setView(root);
+        b.setPositiveButton("确认导入", (dialog, which) -> {
+            String text = etJson.getText().toString().trim();
+            McpSkillManager.ImportResult res = manager.importMcpServersFromJson(rootfsDir, text, overwrite[0]);
+            Toast.makeText(a, res.message, Toast.LENGTH_LONG).show();
+            if (res.success && onImported != null) {
+                onImported.run();
             }
         });
         b.setNegativeButton("取消", null);
         b.show();
+    }
+
+    private static Map<String, String> parseHeadersInput(String raw) {
+        Map<String, String> map = new LinkedHashMap<>();
+        if (raw == null || raw.trim().isEmpty()) return map;
+        String trimmed = raw.trim();
+        if (trimmed.startsWith("{")) {
+            try {
+                org.json.JSONObject obj = new org.json.JSONObject(trimmed);
+                java.util.Iterator<String> it = obj.keys();
+                while (it.hasNext()) {
+                    String k = it.next();
+                    map.put(k, obj.optString(k));
+                }
+                return map;
+            } catch (Exception ignored) {}
+        }
+        for (String line : trimmed.split("[\r\n;]+")) {
+            int idx = line.indexOf(':');
+            if (idx > 0) {
+                String k = line.substring(0, idx).trim();
+                String v = line.substring(idx + 1).trim();
+                if (!k.isEmpty()) map.put(k, v);
+            }
+        }
+        return map;
     }
 
     private static void showAddSkillDialog(Activity a, File rootfsDir, McpSkillManager manager, Runnable onSaved) {
