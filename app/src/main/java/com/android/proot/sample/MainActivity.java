@@ -99,6 +99,12 @@ public class MainActivity extends Activity {
         // 1. Initialize Localization & Managers
         I18n.init(this);
         engine = new PRootEngine(this);
+        PRootEngine.setSharedInstance(engine);
+        try {
+            startService(new Intent(this, com.android.proot.sample.service.IFlowAidlService.class));
+        } catch (Exception e) {
+            android.util.Log.w("MainActivity", "Failed starting IFlowAidlService: " + e.getMessage());
+        }
         workspaceManager = WorkspaceManager.getInstance(this);
         configManager = IFlowConfigManager.getInstance(this);
         terminalBridge = new TerminalBridge(this);

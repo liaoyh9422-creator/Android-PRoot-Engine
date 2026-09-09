@@ -16,6 +16,10 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    buildFeatures {
+        aidl true
+    }
+
     packagingOptions {
         jniLibs {
             useLegacyPackaging = true

@@ -36,6 +36,24 @@ public class PRootEngine {
     private String linkerPath;
     private String bashPath;
     private boolean initialized = false;
+    private static volatile PRootEngine sSharedInstance;
+
+    public static PRootEngine getInstance(Context context) {
+        if (sSharedInstance == null) {
+            synchronized (PRootEngine.class) {
+                if (sSharedInstance == null) {
+                    sSharedInstance = new PRootEngine(context.getApplicationContext());
+                }
+            }
+        }
+        return sSharedInstance;
+    }
+
+    public static void setSharedInstance(PRootEngine engine) {
+        synchronized (PRootEngine.class) {
+            sSharedInstance = engine;
+        }
+    }
 
     public PRootEngine(Context context) {
         this(context, context.getFilesDir());
